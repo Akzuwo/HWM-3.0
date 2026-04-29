@@ -70,8 +70,7 @@ export function CalendarPage() {
         </div>
 
         <section className="calendar-shell" aria-live="polite">
-          <div className="calendar-test-mode" data-calendar-test-mode="" hidden></div>
-          <div className="calendar-weekstrip" data-week-strip="">
+          <div className="calendar-weekstrip is-hidden" data-week-strip="">
             <span className="calendar-weekstrip__label" data-i18n="calendar.weekStrip.label">
               Calendar weeks
             </span>
@@ -144,6 +143,9 @@ export function CalendarPage() {
                 </option>
               </select>
             </div>
+            <button type="button" className="calendar-filter-button" data-calendar-filter-toggle="" data-i18n="calendar.filters.button">
+              Filter
+            </button>
             <span className="calendar-month-nav__label" data-calendar-month-label="" data-i18n="calendar.monthNav.current">
               Current month
             </span>
@@ -226,7 +228,23 @@ export function CalendarPage() {
               </div>
             </div>
             <div id="fc-modal-desc" className="hm-modal__desc" data-i18n-html="calendar.modal.noDescription"></div>
+            <div className="hm-modal__todo-status is-hidden" data-todo-status-panel="">
+              <label htmlFor="fc-todo-status" data-i18n="calendar.todoStatus.label">
+                ToDo status
+              </label>
+              <select id="fc-todo-status" className="hm-select" data-todo-status-select="">
+                <option value="offen" data-i18n="calendar.todoStatus.open">Open</option>
+                <option value="in_bearbeitung" data-i18n="calendar.todoStatus.inProgress">In progress</option>
+                <option value="beendet" data-i18n="calendar.todoStatus.done">Done</option>
+              </select>
+              <button type="button" className="hm-btn hm-btn--secondary" data-todo-status-save="" data-i18n="calendar.todoStatus.save">
+                Save status
+              </button>
+            </div>
             <div className="hm-modal__footer">
+              <button type="button" className="hm-btn hm-btn--primary is-hidden" data-role="edit-view" data-i18n="calendar.modal.buttons.edit">
+                Edit
+              </button>
               <button type="button" className="hm-btn hm-btn--secondary" onClick={() => window.closeModal?.()} data-i18n="calendar.modal.buttons.close">
                 Close
               </button>
@@ -426,6 +444,64 @@ export function CalendarPage() {
             <button type="button" className="hm-btn hm-btn--danger" data-role="confirm" onClick={() => window.confirmDeleteEntry?.()} data-i18n="calendar.modal.buttons.delete">
               Delete
             </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="calendar-drag-confirm-overlay" className="hm-modal-overlay" aria-hidden="true" onClick={() => window.cancelCalendarDrag?.()}>
+        <div className="hm-modal hm-modal--compact" role="dialog" aria-modal="true" aria-labelledby="calendar-drag-confirm-title" onClick={(event) => event.stopPropagation()}>
+          <header className="hm-modal__header">
+            <button type="button" className="hm-modal__close" onClick={() => window.cancelCalendarDrag?.()} aria-label="Close" data-i18n-attr="aria-label:calendar.modal.buttons.close">
+              ✕
+            </button>
+            <div className="hm-modal__title-wrapper">
+              <h2 id="calendar-drag-confirm-title" className="hm-modal__title" data-i18n="calendar.dragConfirm.title">
+                Move entry?
+              </h2>
+            </div>
+          </header>
+          <div className="hm-modal__body">
+            <p data-calendar-drag-message="" data-i18n="calendar.dragConfirm.message">
+              Do you want to move this entry to the selected date?
+            </p>
+          </div>
+          <div className="hm-modal__footer">
+            <button type="button" className="hm-btn hm-btn--secondary" data-role="cancel" onClick={() => window.cancelCalendarDrag?.()} data-i18n="calendar.modal.buttons.cancel">
+              Cancel
+            </button>
+            <button type="button" className="hm-btn hm-btn--primary" data-role="confirm" onClick={() => window.confirmCalendarDrag?.()} data-i18n="calendar.dragConfirm.confirm">
+              Move
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="calendar-filter-sheet" data-calendar-filter-sheet="" aria-hidden="true">
+        <div className="calendar-filter-sheet__panel" role="dialog" aria-modal="true" aria-labelledby="calendar-filter-title">
+          <header className="calendar-filter-sheet__header">
+            <h2 id="calendar-filter-title" className="calendar-filter-sheet__title" data-i18n="calendar.filters.title">
+              Calendar filters
+            </h2>
+            <button type="button" className="calendar-filter-sheet__close" data-calendar-filter-close="" aria-label="Close" data-i18n-attr="aria-label:calendar.modal.buttons.close">
+              ✕
+            </button>
+          </header>
+          <div className="calendar-filter-sheet__body">
+            <p className="field-hint" data-i18n="calendar.filters.subjectHint">
+              Hide subjects that are not relevant for you.
+            </p>
+            <div className="calendar-subject-filters" data-calendar-subject-filters="">
+              {SUBJECT_OPTIONS.map((subject) => (
+                <label key={subject} className="calendar-filter-toggle" data-subject-filter={subject}>
+                  <input type="checkbox" value={subject} />
+                  <span>{subject}</span>
+                </label>
+              ))}
+            </div>
+            <label className="calendar-filter-toggle calendar-filter-toggle--wide" data-calendar-completed-todos="">
+              <input type="checkbox" />
+              <span data-i18n="calendar.filters.showCompletedTodos">Show completed ToDos</span>
+            </label>
           </div>
         </div>
       </div>

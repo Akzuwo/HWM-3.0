@@ -24,13 +24,7 @@ body.legal-page.legal-loaded {
 
 .legal-header::after,
 .legal-section::after {
-  content: '';
-  position: absolute;
-  inset: auto 1.5rem -1.5rem;
-  height: 1px;
-  background: linear-gradient(90deg, rgba(139, 167, 214, 0.26), rgba(255, 255, 255, 0));
-  opacity: 0;
-  transition: opacity 0.6s ease;
+  display: none;
 }
 
 .legal-header.is-visible,
@@ -45,30 +39,18 @@ body.legal-page.legal-loaded {
 }
 
 .legal-card {
-  box-shadow: 0 16px 30px -22px rgba(126, 152, 204, 0.18);
-  backdrop-filter: blur(24px);
-  background:
-    linear-gradient(160deg, rgba(255,255,255,0.1), rgba(246, 249, 255, 0.02)),
-    rgba(255,255,255,0.012);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  transition: transform 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease;
-}
-
-.legal-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 36px -24px rgba(126, 152, 204, 0.24);
-  border-color: rgba(146, 182, 236, 0.26);
+  transition: opacity 0.3s ease;
 }
 
 .legal-section ul li {
   position: relative;
-  padding-left: 1.5rem;
+  padding-left: 1.15rem;
 }
 
 .legal-section ul li::before {
   content: '•';
   position: absolute;
-  left: 0.35rem;
+  left: 0;
   color: var(--hm-primary-500, #7ba6ff);
   font-weight: 600;
 }

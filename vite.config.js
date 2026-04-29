@@ -14,6 +14,7 @@ export default defineConfig({
         login: 'login.html',
         kalender: 'kalender.html',
         upcoming: 'upcoming.html',
+        todos: 'todos.html',
         weeklyPreview: 'weekly-preview.html',
         stundenplan: 'stundenplan.html',
         tagesuebersicht: 'tagesuebersicht.html',

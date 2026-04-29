@@ -9,6 +9,7 @@ import { HomePage } from '../pages/HomePage';
 import { LegalPage } from '../pages/LegalPage';
 import { LoginPage } from '../pages/LoginPage';
 import { ProfilePage } from '../pages/ProfilePage';
+import { TodoListsPage } from '../pages/TodoListsPage';
 import { UpcomingPage } from '../pages/UpcomingPage';
 import { WeeklyPreviewPage } from '../pages/WeeklyPreviewPage';
 
@@ -28,6 +29,10 @@ const PAGE_MAP = {
   upcoming: {
     title: 'Upcoming - Homework Manager',
     component: UpcomingPage
+  },
+  todos: {
+    title: 'ToDo Listen - Homework Manager',
+    component: TodoListsPage
   },
   'weekly-preview': {
     title: 'Weekly Preview - Homework Manager',

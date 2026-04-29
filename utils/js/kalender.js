@@ -94,7 +94,7 @@ function applyActionBarPermissions() {
     CALENDAR_PERMISSIONS.updateActionBarPermissions({
       onCreate: () => showEntryForm(),
       canManageEntries: userCanManageEntries,
-      canCreatePersonalTodos
+      canCreatePersonalTodos: false
     });
   } else {
     if (!createBtn) {
@@ -106,7 +106,7 @@ function applyActionBarPermissions() {
       return;
     }
 
-    if (!userCanManageEntries && !canCreatePersonalTodos) {
+    if (!userCanManageEntries) {
       createBtn.disabled = true;
       createBtn.setAttribute('aria-disabled', 'true');
       createBtn.removeAttribute('title');
@@ -225,7 +225,8 @@ const classSelectorText = {
   loading: t('classSelector.loading', 'Loading classes …'),
   error: t('classSelector.error', 'Unable to load classes.'),
   changeError: t('classSelector.changeError', 'Could not change class.'),
-  required: t('classSelector.required', 'Please select a class to view the calendar.')
+  required: t('classSelector.required', 'Please select a class to view the calendar.'),
+  allClasses: t('classSelector.allClasses', 'Alle Klassen')
 };
 const testModeText = {
   noticeTitle: t('status.testMode.title', 'Development test mode'),
@@ -250,6 +251,22 @@ const TYPE_LABELS = {
   event: t('legend.event', 'Event'),
   ferien: t('legend.holiday', 'Holidays & Breaks'),
   todo: t('legend.todo', 'ToDo')
+};
+
+function getClassDisplayLabel(cls) {
+  if (!cls || !cls.slug) {
+    return '';
+  }
+  if (cls.slug === 'default') {
+    return classSelectorText.allClasses;
+  }
+  return cls.title ? `${cls.title} (${cls.slug})` : cls.slug;
+}
+
+const TODO_STATUS = {
+  open: 'offen',
+  inProgress: 'in_bearbeitung',
+  done: 'beendet'
 };
 
 const actionText = {
@@ -302,20 +319,8 @@ function updateTemporaryTestModeNotice() {
   if (!notice) {
     return;
   }
-  if (!temporaryTestModeActive) {
-    notice.hidden = true;
-    notice.innerHTML = '';
-    return;
-  }
-  const reasonMarkup = temporaryTestModeReason
-    ? `<span>Fallback source: ${temporaryTestModeReason}.</span>`
-    : '';
-  notice.innerHTML = `
-    <strong>${testModeText.noticeTitle}</strong>
-    <span>${testModeText.noticeBody}</span>
-    ${reasonMarkup}
-  `;
-  notice.hidden = false;
+  notice.hidden = true;
+  notice.innerHTML = '';
 }
 
 function setTemporaryTestMode(active, reason = '') {
@@ -334,14 +339,7 @@ function activateTemporaryTestMode(error = null, reason = '') {
   }
   const wasActive = temporaryTestModeActive;
   setTemporaryTestMode(true, reason);
-  if (!wasActive && !temporaryTestModeNotified && typeof window !== 'undefined') {
-    temporaryTestModeNotified = true;
-    window.setTimeout(() => {
-      if (typeof showOverlay === 'function') {
-        showOverlay(testModeText.toast, 'warning');
-      }
-    }, 0);
-  }
+  temporaryTestModeNotified = temporaryTestModeNotified || wasActive;
   return true;
 }
 
@@ -367,7 +365,10 @@ const modalText = {
   deleteConfirm: modalT('confirmDelete', 'Do you really want to delete this entry?'),
   deleteError: modalT('messages.deleteError', 'Unable to delete the entry.'),
   deleteSuccess: modalT('messages.deleteSuccess', 'Entry deleted successfully.'),
-  saveError: modalT('messages.saveError', 'Unable to save the entry.')
+  saveError: modalT('messages.saveError', 'Unable to save the entry.'),
+  edit: modalT('buttons.edit', 'Bearbeiten'),
+  statusSaveError: modalT('messages.statusSaveError', 'Status konnte nicht gespeichert werden.'),
+  statusSaveSuccess: modalT('messages.statusSaveSuccess', 'Status wurde gespeichert.')
 };
 
 const modalButtons = {
@@ -449,6 +450,11 @@ let lastCalendarViewType = null;
 let lastCalendarDateValue = null;
 let resizeHandler = null;
 let calendarAnimationIndex = 0;
+let pendingDragChange = null;
+let calendarPreferences = {
+  muted_subjects: [],
+  show_completed_todos: false
+};
 
 function mdBold(text = '') {
   return text.replace(/\*(.*?)\*/g, '<strong>$1</strong>');
@@ -521,6 +527,69 @@ function formatEntryDate(date) {
   const month = String(next.getMonth() + 1).padStart(2, '0');
   const day = String(next.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function normalisePreferencePayload(payload = {}) {
+  const muted = Array.isArray(payload.muted_subjects) ? payload.muted_subjects : [];
+  return {
+    muted_subjects: Array.from(new Set(muted.map((item) => String(item || '').trim()).filter(Boolean))),
+    show_completed_todos: Boolean(payload.show_completed_todos)
+  };
+}
+
+async function loadCalendarPreferences() {
+  try {
+    const res = await fetchWithSession(`${API_BASE_URL}/api/calendar/preferences`);
+    if (!res.ok) {
+      return calendarPreferences;
+    }
+    const payload = await res.json();
+    calendarPreferences = normalisePreferencePayload(payload?.data || {});
+  } catch (error) {
+    console.warn('Unable to load calendar preferences:', error);
+  }
+  syncFilterSheetState();
+  return calendarPreferences;
+}
+
+async function saveCalendarPreferences(nextPreferences) {
+  calendarPreferences = normalisePreferencePayload(nextPreferences);
+  syncFilterSheetState();
+  try {
+    const res = await fetchWithSession(`${API_BASE_URL}/api/calendar/preferences`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(calendarPreferences)
+    });
+    if (!res.ok) {
+      throw new Error(`Status ${res.status}`);
+    }
+    const payload = await res.json();
+    calendarPreferences = normalisePreferencePayload(payload?.data || calendarPreferences);
+    syncFilterSheetState();
+  } catch (error) {
+    console.error('Unable to save calendar preferences:', error);
+    if (typeof showOverlay === 'function') {
+      showOverlay(t('filters.saveError', 'Filter konnten nicht gespeichert werden.'), 'error');
+    }
+  }
+}
+
+function isSubjectMuted(subject) {
+  return Boolean(subject && calendarPreferences.muted_subjects.includes(subject));
+}
+
+function shouldDisplayEntry(entry) {
+  if (!entry) {
+    return false;
+  }
+  if (entry.typ === 'todo') {
+    const status = entry.todo_status || (entry.is_done ? TODO_STATUS.done : TODO_STATUS.open);
+    if (status === TODO_STATUS.done && !calendarPreferences.show_completed_todos) {
+      return false;
+    }
+  }
+  return !isSubjectMuted(entry.fach || '');
 }
 
 function ensureTemporaryTestClassContext(preferredSlug = '') {
@@ -825,7 +894,7 @@ async function initialiseClassSelector() {
   classes.forEach((cls) => {
     const option = document.createElement('option');
     option.value = cls.slug;
-    option.textContent = cls.title ? `${cls.title} (${cls.slug})` : cls.slug;
+    option.textContent = getClassDisplayLabel(cls);
     select.appendChild(option);
   });
 
@@ -876,16 +945,21 @@ async function initialiseClassSelector() {
   container.dataset.hmInitialised = 'true';
 }
 
-function toggleViewMode(canEdit) {
+function toggleViewMode(canEdit, forceEdit = false) {
   const viewMode = document.getElementById('fc-view-mode');
   const editForm = document.getElementById('fc-edit-form');
+  const editButton = document.querySelector('[data-role="edit-view"]');
   if (!viewMode || !editForm) return;
-  if (canEdit) {
+  if (canEdit && forceEdit) {
     viewMode.classList.add('is-hidden');
     editForm.classList.remove('is-hidden');
   } else {
     viewMode.classList.remove('is-hidden');
     editForm.classList.add('is-hidden');
+  }
+  if (editButton) {
+    editButton.classList.toggle('is-hidden', !canEdit || forceEdit);
+    editButton.onclick = () => toggleViewMode(canEdit, true);
   }
 }
 
@@ -898,7 +972,19 @@ function setModalDescription(html) {
 
 function openModal(event) {
   const { id } = event;
-  const { type, typeLabel, description, fach, datum, enddatum, startzeit, endzeit, canEdit } = event.extendedProps;
+  const {
+    type,
+    typeLabel,
+    description,
+    fach,
+    datum,
+    enddatum,
+    startzeit,
+    endzeit,
+    canEdit,
+    canUpdateStatus,
+    todoStatus
+  } = event.extendedProps;
 
   const overlay = document.getElementById('fc-modal-overlay');
   const editForm = document.getElementById('fc-edit-form');
@@ -913,7 +999,11 @@ function openModal(event) {
   const eventTitle = storedTitle !== undefined ? storedTitle : computedTitle;
   const detailDescription = descriptionBody !== undefined ? descriptionBody : computedDescription;
   const isEvent = type === 'event';
-  const modalTitle = isEvent ? (eventTitle || typeLabel) : `${typeLabel}${fach ? ` · ${fach}` : ''}`;
+  const isHoliday = type === 'ferien';
+  const isTodo = type === 'todo';
+  const modalTitle = isEvent || isHoliday
+    ? (eventTitle || detailDescription || typeLabel)
+    : `${typeLabel}${fach ? ` · ${fach}` : ''}`;
   const subjectValue = isEvent ? (eventTitle || '—') : (fach || '—');
 
   const titleElement = document.getElementById('fc-modal-title');
@@ -922,7 +1012,7 @@ function openModal(event) {
   }
   const typeElement = document.getElementById('fc-modal-type');
   if (typeElement) {
-    typeElement.textContent = typeLabel;
+    typeElement.textContent = isHoliday ? (eventTitle || detailDescription || typeLabel) : typeLabel;
   }
   const subjectElement = document.getElementById('fc-modal-subject');
   if (subjectElement) {
@@ -988,12 +1078,23 @@ function openModal(event) {
     editFormController.evaluate();
   }
 
-  const canEditEvent = Boolean(canEdit);
-  toggleViewMode(canEditEvent);
+  const statusPanel = document.querySelector('[data-todo-status-panel]');
+  const statusSelect = document.querySelector('[data-todo-status-select]');
+  const statusSave = document.querySelector('[data-todo-status-save]');
+  if (statusPanel) {
+    statusPanel.classList.toggle('is-hidden', !isTodo || !canUpdateStatus);
+  }
+  if (statusSelect) {
+    statusSelect.value = todoStatus || TODO_STATUS.open;
+  }
+  if (statusSave) {
+    statusSave.onclick = () => saveTodoStatus(id, statusSelect ? statusSelect.value : TODO_STATUS.open);
+  }
 
-  const initialFocusTarget = canEditEvent
-    ? document.querySelector('#fc-edit-form [data-hm-modal-initial-focus]')
-    : overlay.querySelector('.hm-modal__close');
+  const canEditEvent = Boolean(canEdit) && !isTodo;
+  toggleViewMode(canEditEvent, false);
+
+  const initialFocusTarget = overlay.querySelector('.hm-modal__close');
 
   if (window.hmModal) {
     window.hmModal.open(overlay, {
@@ -1032,8 +1133,42 @@ function closeModal() {
   if (viewMode) {
     viewMode.classList.remove('is-hidden');
   }
+  document.querySelector('[data-role="edit-view"]')?.classList.add('is-hidden');
+  document.querySelector('[data-todo-status-panel]')?.classList.add('is-hidden');
 }
 window.closeModal = closeModal;
+
+async function saveTodoStatus(id, todoStatus) {
+  const status = todoStatus;
+  const resolvedStatus = [TODO_STATUS.open, TODO_STATUS.inProgress, TODO_STATUS.done].includes(status)
+    ? status
+    : TODO_STATUS.open;
+  const button = document.querySelector('[data-todo-status-save]');
+  if (button) {
+    button.disabled = true;
+  }
+  try {
+    const res = await fetchWithSession(`${API_BASE_URL}/api/todos/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ todo_status: resolvedStatus })
+    });
+    if (!res.ok) {
+      const err = await res.text().catch(() => '');
+      throw new Error(err || `Status ${res.status}`);
+    }
+    closeModal();
+    await loadCalendar();
+    showOverlay(modalText.statusSaveSuccess, 'success');
+  } catch (error) {
+    console.error('Failed to update todo status:', error);
+    showOverlay(`${modalText.statusSaveError}\n${error.message}`, 'error');
+  } finally {
+    if (button) {
+      button.disabled = false;
+    }
+  }
+}
 
 async function saveEdit(evt) {
   if (evt) {
@@ -1366,7 +1501,7 @@ function createEventContent(info) {
   const subjectLabel = info.event.title;
   const startLabel = info.event.extendedProps.startLabel;
   const endLabel = info.event.extendedProps.endLabel;
-  const metaPieces = [typeLabel];
+  const metaPieces = type === 'ferien' ? [] : [typeLabel];
   if (info.event.extendedProps.isTemporaryTestData) {
     metaPieces.unshift(testModeText.entryLabel);
   }
@@ -1407,6 +1542,8 @@ function normaliseEvent(entry) {
   const todoTitle = (entry.beschreibung || '').split('\n')[0].trim();
   const displaySubject = entry.typ === 'event'
     ? (eventTitle || typeLabel)
+    : entry.typ === 'ferien'
+      ? ((entry.beschreibung || '').split('\n')[0].trim() || typeLabel)
     : entry.typ === 'todo'
       ? (todoTitle || typeLabel)
       : (subject || typeLabel);
@@ -1420,7 +1557,9 @@ function normaliseEvent(entry) {
   const isPrivate = Boolean(entry.is_private);
   const isOwned = Boolean(entry.is_owned);
   const isTemporaryTestData = Boolean(entry.is_temporary_test_data);
-  const canEdit = !isTemporaryTestData && (isPrivate ? isOwned : userCanManageEntries);
+  const todoStatus = entry.todo_status || (entry.is_done ? TODO_STATUS.done : TODO_STATUS.open);
+  const canEdit = !isTemporaryTestData && !isPrivate && Boolean(entry.can_edit);
+  const canUpdateStatus = !isTemporaryTestData && isPrivate && isOwned && entry.typ === 'todo';
 
   const eventConfig = {
     id: String(entry.id),
@@ -1440,9 +1579,11 @@ function normaliseEvent(entry) {
       descriptionBody,
       startLabel,
       endLabel,
+      todoStatus,
       isPrivate,
       isOwned,
       canEdit,
+      canUpdateStatus,
       isTemporaryTestData
     }
   };
@@ -1544,6 +1685,76 @@ function setupCalendarControls(calendar) {
   controls.dataset.enhanced = 'true';
 }
 
+function syncFilterSheetState() {
+  const subjectSet = new Set(calendarPreferences.muted_subjects || []);
+  document.querySelectorAll('[data-subject-filter] input[type="checkbox"]').forEach((input) => {
+    input.checked = !subjectSet.has(input.value);
+  });
+  const completedToggle = document.querySelector('[data-calendar-completed-todos] input[type="checkbox"]');
+  if (completedToggle) {
+    completedToggle.checked = Boolean(calendarPreferences.show_completed_todos);
+  }
+}
+
+function openCalendarFilterSheet() {
+  const sheet = document.querySelector('[data-calendar-filter-sheet]');
+  if (!sheet) return;
+  syncFilterSheetState();
+  sheet.classList.add('is-open');
+  sheet.setAttribute('aria-hidden', 'false');
+  const firstInput = sheet.querySelector('input');
+  firstInput?.focus?.();
+}
+
+function closeCalendarFilterSheet() {
+  const sheet = document.querySelector('[data-calendar-filter-sheet]');
+  if (!sheet) return;
+  sheet.classList.remove('is-open');
+  sheet.setAttribute('aria-hidden', 'true');
+}
+
+function collectFilterPreferences() {
+  const muted = [];
+  document.querySelectorAll('[data-subject-filter] input[type="checkbox"]').forEach((input) => {
+    if (!input.checked) {
+      muted.push(input.value);
+    }
+  });
+  const completedToggle = document.querySelector('[data-calendar-completed-todos] input[type="checkbox"]');
+  return {
+    muted_subjects: muted,
+    show_completed_todos: Boolean(completedToggle?.checked)
+  };
+}
+
+function setupCalendarFilterControls() {
+  const trigger = document.querySelector('[data-calendar-filter-toggle]');
+  const sheet = document.querySelector('[data-calendar-filter-sheet]');
+  const close = document.querySelector('[data-calendar-filter-close]');
+  if (!sheet || sheet.dataset.enhanced === 'true') {
+    return;
+  }
+  trigger?.addEventListener('click', openCalendarFilterSheet);
+  close?.addEventListener('click', closeCalendarFilterSheet);
+  sheet.addEventListener('click', (event) => {
+    if (event.target === sheet) {
+      closeCalendarFilterSheet();
+    }
+  });
+  sheet.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      closeCalendarFilterSheet();
+    }
+  });
+  sheet.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+    input.addEventListener('change', async () => {
+      await saveCalendarPreferences(collectFilterPreferences());
+      await loadCalendar();
+    });
+  });
+  sheet.dataset.enhanced = 'true';
+}
+
 function prepareCalendarContainer(calendarEl) {
   calendarEl.removeAttribute('role');
   calendarEl.removeAttribute('aria-live');
@@ -1570,6 +1781,116 @@ function showCalendarError(calendarEl, message) {
   calendarEl.setAttribute('aria-busy', 'false');
   calendarEl.textContent = message;
 }
+
+function getDragConfirmOverlay() {
+  return document.getElementById('calendar-drag-confirm-overlay');
+}
+
+function closeDragConfirmModal() {
+  const overlay = getDragConfirmOverlay();
+  if (!overlay) return;
+  if (window.hmModal && typeof window.hmModal.close === 'function') {
+    window.hmModal.close(overlay);
+  } else {
+    overlay.classList.remove('is-open');
+    overlay.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('hm-modal-open');
+  }
+}
+
+function openDragConfirmModal(info) {
+  const overlay = getDragConfirmOverlay();
+  pendingDragChange = info;
+  const message = document.querySelector('[data-calendar-drag-message]');
+  if (message && info?.event) {
+    const title = info.event.title || t('dragConfirm.entryFallback', 'dieser Eintrag');
+    const date = formatEntryDate(info.event.start);
+    message.textContent = t(
+      'dragConfirm.messageWithDate',
+      'Möchtest du "{title}" auf den {date} verschieben?'
+    )
+      .replace('{title}', title)
+      .replace('{date}', formatSwissDateFromISO(date));
+  }
+  if (!overlay) {
+    if (window.confirm(message?.textContent || t('dragConfirm.message', 'Eintrag verschieben?'))) {
+      confirmCalendarDrag();
+    } else {
+      cancelCalendarDrag();
+    }
+    return;
+  }
+  if (window.hmModal && typeof window.hmModal.open === 'function') {
+    window.hmModal.open(overlay, {
+      initialFocus: '[data-role="confirm"]',
+      onRequestClose: cancelCalendarDrag
+    });
+  } else {
+    overlay.classList.add('is-open');
+    overlay.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('hm-modal-open');
+  }
+}
+
+function cancelCalendarDrag() {
+  if (pendingDragChange && typeof pendingDragChange.revert === 'function') {
+    pendingDragChange.revert();
+  }
+  pendingDragChange = null;
+  closeDragConfirmModal();
+}
+
+async function confirmCalendarDrag() {
+  const info = pendingDragChange;
+  pendingDragChange = null;
+  closeDragConfirmModal();
+  if (!info?.event) {
+    return;
+  }
+  const event = info.event;
+  const props = event.extendedProps || {};
+  const nextDate = formatEntryDate(event.start);
+  const previousEnd = props.enddatum || props.datum || nextDate;
+  const hadRange = previousEnd && props.datum && previousEnd !== props.datum;
+  const deltaDays = info.delta && typeof info.delta.days === 'number' ? info.delta.days : 0;
+  const nextEndDate = hadRange ? addDaysToDate(previousEnd, deltaDays) : nextDate;
+  try {
+    const res = await fetchWithSession(`${API_BASE_URL}/update_entry`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Role': role
+      },
+      body: JSON.stringify({
+        id: event.id,
+        type: props.type,
+        date: nextDate,
+        description: props.type === 'event'
+          ? (props.eventTitle || event.title || '') + (props.descriptionBody ? `\n\n${props.descriptionBody}` : '')
+          : (props.description || ''),
+        startzeit: props.startzeit || null,
+        endzeit: props.endzeit || null,
+        enddatum: nextEndDate,
+        fach: props.fach || ''
+      })
+    });
+    if (!res.ok) {
+      const err = await res.text().catch(() => '');
+      throw new Error(err || `Status ${res.status}`);
+    }
+    await loadCalendar();
+    showOverlay(t('dragConfirm.success', 'Eintrag wurde verschoben.'), 'success');
+  } catch (error) {
+    console.error('Failed to move calendar entry:', error);
+    if (typeof info.revert === 'function') {
+      info.revert();
+    }
+    showOverlay(`${t('dragConfirm.error', 'Eintrag konnte nicht verschoben werden.')}\n${error.message}`, 'error');
+  }
+}
+
+window.cancelCalendarDrag = cancelCalendarDrag;
+window.confirmCalendarDrag = confirmCalendarDrag;
 
 function initialiseCalendar(events) {
   const calendarEl = document.getElementById('calendar');
@@ -1608,6 +1929,9 @@ function initialiseCalendar(events) {
     expandRows: true,
     handleWindowResize: true,
     headerToolbar: false,
+    editable: !window.matchMedia('(max-width: 767px)').matches,
+    eventStartEditable: !window.matchMedia('(max-width: 767px)').matches,
+    eventDurationEditable: false,
     buttonText: {
       month: t('views.month', 'Month'),
       week: t('views.week', 'Week'),
@@ -1649,6 +1973,16 @@ function initialiseCalendar(events) {
       info.jsEvent.preventDefault();
       openModal(info.event);
     },
+    eventAllow: (dropInfo, draggedEvent) => {
+      return Boolean(draggedEvent?.extendedProps?.canEdit) && draggedEvent.extendedProps.type !== 'todo';
+    },
+    eventDrop: (info) => {
+      if (!info.event.extendedProps?.canEdit || info.event.extendedProps?.type === 'todo') {
+        info.revert();
+        return;
+      }
+      openDragConfirmModal(info);
+    },
     datesSet: () => {
       updateWeekStrip(calendar);
       updateMonthLabel(calendar);
@@ -1680,6 +2014,7 @@ async function loadCalendar() {
   if (!calendarEl) return;
   showCalendarLoading(calendarEl, t('status.loading', 'Loading calendar …'));
 
+  await loadCalendarPreferences();
   const context = await ensureSessionClassContext();
   const classId = context?.classId || currentClassId;
   const classSlug = context?.classSlug || currentClassSlug;
@@ -1713,7 +2048,7 @@ async function loadCalendar() {
     }
 
     setTemporaryTestMode(false);
-    const entries = withTemporaryTestEntries(await res.json());
+    const entries = withTemporaryTestEntries(await res.json()).filter(shouldDisplayEntry);
     const events = entries.map(normaliseEvent);
     publishMobileCalendarState({ events, classId, classSlug: currentClassSlug, error: '' });
     initialiseCalendar(events);
@@ -1723,7 +2058,7 @@ async function loadCalendar() {
     const fallbackContext = usingTemporaryTestMode
       ? ensureTemporaryTestClassContext(classSlug || currentClassSlug)
       : { classId: currentClassId, classSlug: currentClassSlug };
-    const fallbackEvents = withTemporaryTestEntries([]).map(normaliseEvent);
+    const fallbackEvents = withTemporaryTestEntries([]).filter(shouldDisplayEntry).map(normaliseEvent);
     publishMobileCalendarState({
       events: fallbackEvents,
       classId: fallbackContext.classId,
@@ -1736,6 +2071,7 @@ async function loadCalendar() {
 
 window.addEventListener('DOMContentLoaded', () => {
   initActionBar();
+  setupCalendarFilterControls();
   (async () => {
     try {
       await initialiseClassSelector();

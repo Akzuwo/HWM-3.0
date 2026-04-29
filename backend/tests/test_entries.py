@@ -499,6 +499,77 @@ def test_create_personal_todo_for_student(app_client):
     assert int(row['is_private']) == 1
 
 
+def test_personal_todo_subtasks_are_saved_and_listed(app_client):
+    client, storage, _ = app_client
+    with client.session_transaction() as sess:
+        sess['user_id'] = 1
+        sess['role'] = 'student'
+        sess['class_id'] = 1
+
+    create_resp = client.post(
+        '/api/todos',
+        json={
+            'datum': '2026-03-10',
+            'beschreibung': 'Liste vorbereiten',
+            'subtasks': [
+                {'title': 'Material sammeln', 'is_done': True},
+                {'title': 'Abgabe kontrollieren', 'is_done': False},
+            ],
+        },
+    )
+    assert create_resp.status_code == 200
+    todo_id = create_resp.get_json()['id']
+    assert [row['title'] for row in storage['todo_subtasks']] == ['Material sammeln', 'Abgabe kontrollieren']
+
+    list_resp = client.get('/api/todos')
+    assert list_resp.status_code == 200
+    todos = list_resp.get_json()['data']
+    todo = next(item for item in todos if item['id'] == todo_id)
+    assert todo['beschreibung'] == 'Liste vorbereiten'
+    assert [item['title'] for item in todo['subtasks']] == ['Material sammeln', 'Abgabe kontrollieren']
+    assert todo['subtasks'][0]['is_done'] is True
+
+
+def test_personal_todo_update_replaces_subtasks(app_client):
+    client, storage, _ = app_client
+    storage['eintraege'] = [
+        {
+            'id': 12,
+            'class_id': DEFAULT_ENTRY_CLASS_ID,
+            'beschreibung': 'Initial',
+            'datum': '2026-03-12',
+            'enddatum': '2026-03-12',
+            'startzeit': None,
+            'endzeit': None,
+            'typ': 'todo',
+            'fach': '',
+            'owner_user_id': 1,
+            'is_private': 1,
+        }
+    ]
+    storage['todo_subtasks'] = [
+        {'id': 1, 'todo_id': 12, 'owner_user_id': 1, 'title': 'Alt', 'is_done': 0, 'sort_order': 0}
+    ]
+
+    with client.session_transaction() as sess:
+        sess['user_id'] = 1
+        sess['role'] = 'student'
+        sess['class_id'] = 1
+
+    update_resp = client.put(
+        '/api/todos/12',
+        json={
+            'datum': '2026-03-13',
+            'enddatum': '2026-03-13',
+            'beschreibung': 'Updated',
+            'subtasks': [{'title': 'Neu', 'is_done': True}],
+        },
+    )
+    assert update_resp.status_code == 200
+    assert [row['title'] for row in storage['todo_subtasks']] == ['Neu']
+    assert int(storage['todo_subtasks'][0]['is_done']) == 1
+
+
 def test_private_todo_visibility_is_owner_only(app_client):
     client, storage, _ = app_client
     storage['users'][2] = {

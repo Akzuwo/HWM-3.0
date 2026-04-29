@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:calendar-debug": "powershell -ExecutionPolicy Bypass -File scripts/dev-calendar-debug.ps1",
+    "dev:calendar-debug:web": "set VITE_HWM_DEBUG_API=true&& set VITE_HWM_API_BASE=http://127.0.0.1:5000&& vite --host 127.0.0.1",
+    "dev:calendar-debug:backend": "set HWM_DEBUG_MODE=1&& python backend/app.py",
     "build": "vite build",
     "preview": "vite preview"
   },

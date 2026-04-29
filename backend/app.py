@@ -38,17 +38,24 @@ from schedule_importer import (
 )
 
 # ---------- APP INITIALISIEREN ----------
+HWM_DEBUG_MODE = (os.getenv('HWM_DEBUG_MODE', '').strip().lower() in {'1', 'true', 'yes', 'on', 'debug'})
+
 app = Flask(__name__, static_url_path="/")
 
 # Session‐Cookies auch cross‐site erlauben
 app.config.update(
-    SESSION_COOKIE_SAMESITE="None",
-    SESSION_COOKIE_SECURE=True
+    SESSION_COOKIE_SAMESITE="Lax" if HWM_DEBUG_MODE else "None",
+    SESSION_COOKIE_SECURE=not HWM_DEBUG_MODE
 )
 
 # Secrets laden
-with open('/etc/secrets/hwm-session-secret', encoding='utf-8') as f:
-    app.secret_key = f.read().strip()
+try:
+    with open('/etc/secrets/hwm-session-secret', encoding='utf-8') as f:
+        app.secret_key = f.read().strip()
+except FileNotFoundError:
+    if not HWM_DEBUG_MODE:
+        raise
+    app.secret_key = os.getenv('HWM_DEBUG_SESSION_SECRET', 'hwm-local-debug-session')
 
 # ---------- CORS ----------
 ALLOWED_CORS_ORIGINS = [
@@ -61,10 +68,28 @@ ALLOWED_CORS_ORIGIN_PATTERNS = [
     "https://*.homework-manager.pages.dev",
     "https://*.hwm-2-preview.pages.dev"
 ]
+if HWM_DEBUG_MODE:
+    ALLOWED_CORS_ORIGINS.extend([
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:4173",
+        "http://127.0.0.1:4173",
+        "http://localhost:4174",
+        "http://127.0.0.1:4174",
+    ])
 
 # Environment configuration for the production deployment of the Homework Manager backend.
 # SMTP credentials are centralised in config.py to avoid duplication across modules.
-_contact_settings = get_contact_smtp_settings()
+if HWM_DEBUG_MODE:
+    _contact_settings = {
+        "host": "localhost",
+        "user": None,
+        "password": None,
+        "recipient": "debug@localhost",
+        "from_address": "debug@localhost",
+    }
+else:
+    _contact_settings = get_contact_smtp_settings()
 CONTACT_SMTP_HOST = _contact_settings["host"]
 CONTACT_SMTP_USER = _contact_settings["user"]
 CONTACT_SMTP_PASSWORD = _contact_settings["password"]
@@ -82,6 +107,11 @@ _LOG_HANDLER_LOGGERS = (app.logger, logging.getLogger())
 
 CLASS_ADMIN_ROLES = {'admin', 'class_admin'}
 ENTRY_MANAGER_ROLES = {'admin', 'teacher', 'class_admin'}
+GLOBAL_ENTRY_CLASS_ID = "default"
+TODO_STATUS_OPEN = "offen"
+TODO_STATUS_IN_PROGRESS = "in_bearbeitung"
+TODO_STATUS_DONE = "beendet"
+TODO_STATUS_VALUES = {TODO_STATUS_OPEN, TODO_STATUS_IN_PROGRESS, TODO_STATUS_DONE}
 
 
 def _get_runtime_contact_settings() -> Dict[str, Optional[str]]:
@@ -246,6 +276,14 @@ def _authenticate_request() -> Tuple[Optional[Dict[str, Any]], Optional[Tuple[in
         g.user = {'id': user_id, 'role': role}
         return g.user, None
 
+    if HWM_DEBUG_MODE:
+        session['user_id'] = 1
+        session['role'] = 'admin'
+        session['class_slug'] = session.get('class_slug') or 'l23a-test'
+        session['entry_class_id'] = session.get('entry_class_id') or 'l23a-test'
+        g.user = {'id': 1, 'role': 'admin', 'email': 'debug@localhost'}
+        return g.user, None
+
     token = get_bearer_token()
     if not token:
         payload = {"error": "unauthorized", "message": "Missing bearer token"}
@@ -280,12 +318,20 @@ CORS(
     supports_credentials=True,
     resources={r"/*": {"origins": ALLOWED_CORS_ORIGINS + ALLOWED_CORS_ORIGIN_PATTERNS}},
     methods=["GET","HEAD","POST","OPTIONS","PUT","DELETE"],
-    allow_headers=["Content-Type", "Authorization"]
+    allow_headers=["Content-Type", "Authorization", "X-Role"]
 )
 # ---------- DATABASE POOL ----------
-DB_CONFIG = get_db_config()
-pool = pooling.MySQLConnectionPool(pool_name="mypool", pool_size=5, pool_reset_session=True, **DB_CONFIG)
+if HWM_DEBUG_MODE:
+    DB_CONFIG = {}
+    pool = None
+else:
+    DB_CONFIG = get_db_config()
+    pool = pooling.MySQLConnectionPool(pool_name="mypool", pool_size=5, pool_reset_session=True, **DB_CONFIG)
+
+
 def get_connection():
+    if pool is None:
+        raise RuntimeError("database_unavailable_in_debug_mode")
     return pool.get_connection()
 
 
@@ -304,6 +350,141 @@ def _serialize_rows(rows: Iterable[Dict[str, Any]]) -> Iterable[Dict[str, Any]]:
     for row in rows:
         serialized.append({key: _serialize_value(value) for key, value in row.items()})
     return serialized
+
+
+DEBUG_CLASSES = [
+    {
+        'id': None,
+        'slug': GLOBAL_ENTRY_CLASS_ID,
+        'title': 'Alle Klassen',
+        'description': 'Schulweite Einträge',
+        'is_active': 1,
+    },
+    {
+        'id': 23,
+        'slug': 'l23a-test',
+        'title': 'Test class L23a',
+        'description': 'Lokale Kalender-Debugklasse',
+        'is_active': 1,
+    },
+    {
+        'id': 24,
+        'slug': 'u24f-test',
+        'title': 'Test class U24f',
+        'description': 'Zweite Debugklasse für verlinkte Einträge',
+        'is_active': 1,
+    },
+]
+
+
+def _debug_calendar_entries() -> List[Dict[str, Any]]:
+    today = datetime.date.today()
+    month_start = today.replace(day=1)
+
+    def day(offset: int) -> str:
+        return (month_start + datetime.timedelta(days=offset)).isoformat()
+
+    return [
+        {
+            'id': 9001,
+            'class_id': 'l23a-test',
+            'beschreibung': 'Mathematik: Analysis Übungsserie 4\nKurze Besprechung in der nächsten Lektion.',
+            'datum': day(1),
+            'enddatum': day(1),
+            'startzeit': None,
+            'endzeit': None,
+            'typ': 'hausaufgabe',
+            'fach': 'Mathematik',
+            'owner_user_id': 1,
+            'is_private': False,
+            'is_owned': False,
+            'can_edit': True,
+        },
+        {
+            'id': 9002,
+            'class_id': 'l23a-test',
+            'beschreibung': 'Englisch Prüfung: Unit 7 Vocabulary und Writing.',
+            'datum': day(5),
+            'enddatum': day(5),
+            'startzeit': '09:40:00',
+            'endzeit': None,
+            'typ': 'pruefung',
+            'fach': 'Englisch',
+            'owner_user_id': 1,
+            'is_private': False,
+            'is_owned': False,
+            'can_edit': True,
+        },
+        {
+            'id': 9003,
+            'class_id': GLOBAL_ENTRY_CLASS_ID,
+            'beschreibung': 'Frühlingsferien',
+            'datum': day(12),
+            'enddatum': day(18),
+            'startzeit': None,
+            'endzeit': None,
+            'typ': 'ferien',
+            'fach': '',
+            'owner_user_id': 1,
+            'is_private': False,
+            'is_owned': False,
+            'can_edit': True,
+        },
+        {
+            'id': 9004,
+            'class_id': 'u24f-test',
+            'beschreibung': 'Sporttag Anmeldung kontrollieren.',
+            'datum': day(21),
+            'enddatum': day(21),
+            'startzeit': None,
+            'endzeit': None,
+            'typ': 'event',
+            'fach': '',
+            'owner_user_id': 1,
+            'is_private': False,
+            'is_owned': False,
+            'can_edit': True,
+        },
+        {
+            'id': 9101,
+            'beschreibung': 'Präsentation für Geschichte vorbereiten.',
+            'datum': day(7),
+            'enddatum': day(7),
+            'startzeit': None,
+            'endzeit': None,
+            'typ': 'todo',
+            'fach': '',
+            'is_done': 0,
+            'todo_status': TODO_STATUS_IN_PROGRESS,
+            'is_private': True,
+            'is_owned': True,
+            'can_edit': False,
+            'can_update_status': True,
+        },
+        {
+            'id': 9102,
+            'beschreibung': 'Abgeschlossene Debug-ToDo, nur mit Einstellung sichtbar.',
+            'datum': day(9),
+            'enddatum': day(9),
+            'startzeit': None,
+            'endzeit': None,
+            'typ': 'todo',
+            'fach': '',
+            'is_done': 1,
+            'todo_status': TODO_STATUS_DONE,
+            'is_private': True,
+            'is_owned': True,
+            'can_edit': False,
+            'can_update_status': True,
+        },
+    ]
+
+
+def _debug_calendar_preferences() -> Dict[str, Any]:
+    return {
+        'muted_subjects': [],
+        'show_completed_todos': False,
+    }
 
 
 def _parse_pagination(default_size: int = 25, max_size: int = 100) -> Tuple[int, int]:
@@ -379,6 +560,91 @@ def _pagination_response(data: Iterable[Dict[str, Any]], total: int, page: int, 
             },
         }
     )
+
+
+def _normalize_todo_subtasks(raw_subtasks: Any) -> List[Dict[str, Any]]:
+    if raw_subtasks is None:
+        return []
+    if not isinstance(raw_subtasks, list):
+        raise ValueError('invalid_subtasks')
+
+    subtasks: List[Dict[str, Any]] = []
+    for index, item in enumerate(raw_subtasks):
+        if isinstance(item, str):
+            title = item.strip()
+            is_done = False
+        elif isinstance(item, dict):
+            title = (item.get('title') or item.get('text') or '').strip()
+            is_done = _parse_bool(item.get('is_done', item.get('done', False)), default=False)
+        else:
+            raise ValueError('invalid_subtasks')
+
+        if not title:
+            continue
+        if len(title) > 255:
+            raise ValueError('subtask_too_long')
+        subtasks.append({'title': title, 'is_done': is_done, 'sort_order': index})
+
+    return subtasks
+
+
+def _load_todo_subtasks(conn, todo_ids: Iterable[int], owner_user_id: int) -> Dict[int, List[Dict[str, Any]]]:
+    ids = [int(todo_id) for todo_id in todo_ids if todo_id is not None]
+    if not ids:
+        return {}
+
+    placeholders = ','.join(['%s'] * len(ids))
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute(
+            f"""
+            SELECT id, todo_id, title, is_done, sort_order
+            FROM todo_subtasks
+            WHERE owner_user_id=%s
+              AND todo_id IN ({placeholders})
+            ORDER BY todo_id ASC, sort_order ASC, id ASC
+            """,
+            (int(owner_user_id), *ids),
+        )
+        grouped: Dict[int, List[Dict[str, Any]]] = {todo_id: [] for todo_id in ids}
+        for row in cursor.fetchall() or []:
+            todo_id = int(row.get('todo_id') or 0)
+            grouped.setdefault(todo_id, []).append(
+                {
+                    'id': row.get('id'),
+                    'title': row.get('title') or '',
+                    'is_done': bool(row.get('is_done')),
+                    'sort_order': row.get('sort_order') or 0,
+                }
+            )
+        return grouped
+    finally:
+        cursor.close()
+
+
+def _replace_todo_subtasks(conn, todo_id: int, owner_user_id: int, subtasks: List[Dict[str, Any]]) -> None:
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "DELETE FROM todo_subtasks WHERE todo_id=%s AND owner_user_id=%s",
+            (int(todo_id), int(owner_user_id)),
+        )
+        for subtask in subtasks:
+            cursor.execute(
+                """
+                INSERT INTO todo_subtasks (todo_id, owner_user_id, title, is_done, sort_order)
+                VALUES (%s,%s,%s,%s,%s)
+                """,
+                (
+                    int(todo_id),
+                    int(owner_user_id),
+                    subtask['title'],
+                    1 if subtask.get('is_done') else 0,
+                    int(subtask.get('sort_order') or 0),
+                ),
+            )
+    finally:
+        cursor.close()
 
 
 def _parse_bool(value: Any, default: bool = True) -> bool:
@@ -1327,6 +1593,14 @@ def _ensure_entries_schema_compatibility(cur, conn, columns: Dict[str, str]) -> 
         cur.execute("ALTER TABLE eintraege ADD COLUMN is_private TINYINT(1) NOT NULL DEFAULT 0 AFTER owner_user_id")
         schema_changed = True
 
+    if "is_done" not in columns:
+        cur.execute("ALTER TABLE eintraege ADD COLUMN is_done TINYINT(1) NOT NULL DEFAULT 0 AFTER is_private")
+        schema_changed = True
+
+    if "todo_status" not in columns:
+        cur.execute("ALTER TABLE eintraege ADD COLUMN todo_status VARCHAR(32) NULL AFTER is_done")
+        schema_changed = True
+
     cur.execute("SHOW COLUMNS FROM eintraege")
     refreshed_columns = {row[0]: row[1] for row in cur.fetchall()}
     if "is_private" in refreshed_columns:
@@ -1346,8 +1620,49 @@ def _ensure_entries_schema_compatibility(cur, conn, columns: Dict[str, str]) -> 
             cur.execute("CREATE INDEX idx_eintraege_private_date ON eintraege (is_private, datum)")
             schema_changed = True
 
+    if "is_done" in refreshed_columns:
+        cur.execute("UPDATE eintraege SET is_done = 0 WHERE is_done IS NULL")
+        if getattr(cur, "rowcount", 0) > 0:
+            schema_changed = True
+
+    if "todo_status" in refreshed_columns:
+        cur.execute(
+            """
+            UPDATE eintraege
+            SET todo_status = CASE WHEN COALESCE(is_done, 0)=1 THEN %s ELSE %s END
+            WHERE typ='todo' AND (todo_status IS NULL OR todo_status='')
+            """,
+            (TODO_STATUS_DONE, TODO_STATUS_OPEN),
+        )
+        if getattr(cur, "rowcount", 0) > 0:
+            schema_changed = True
+
     if schema_changed:
         conn.commit()
+
+
+def ensure_calendar_preferences_table():
+    try:
+        conn = get_connection()
+    except Exception:
+        return
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS calendar_preferences (
+                user_id INT PRIMARY KEY,
+                muted_subjects TEXT NULL,
+                show_completed_todos TINYINT(1) NOT NULL DEFAULT 0,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        conn.commit()
+    finally:
+        cur.close()
+        conn.close()
 
 
 # Tabelle für den Stundenplan sicherstellen
@@ -1529,6 +1844,7 @@ def ensure_weekly_preview_cache_table():
 
 ensure_stundenplan_table()
 ensure_entries_table()
+ensure_calendar_preferences_table()
 ensure_email_verifications_table()
 ensure_password_resets_table()
 ensure_weekly_preview_cache_table()
@@ -1751,6 +2067,14 @@ def healthz():
 @require_authenticated
 def export_ics():
     """Erzeugt eine iCalendar-Datei mit allen zukünftigen Einträgen."""
+    if HWM_DEBUG_MODE:
+        ics_text = _build_ics_content(_debug_calendar_entries())
+        return Response(
+            ics_text,
+            mimetype='text/calendar',
+            headers={'Content-Disposition': 'attachment; filename="homework-debug.ics"'}
+        )
+
     class_id = _get_session_entry_class_id()
     user_id = session.get('user_id')
     include_todos = request.args.get('include_todos', '1') != '0'
@@ -1799,6 +2123,14 @@ def export_ics():
 @require_authenticated
 def entries_collection():
     """Gibt alle Einträge zurück."""
+    if HWM_DEBUG_MODE:
+        show_completed = _parse_bool(request.args.get('show_completed_todos'), default=False)
+        entries = [
+            entry for entry in _debug_calendar_entries()
+            if show_completed or entry.get('todo_status') != TODO_STATUS_DONE
+        ]
+        return jsonify(entries)
+
     class_id = _get_session_entry_class_id()
     user_id = session.get('user_id')
     if user_id is None:
@@ -1812,11 +2144,13 @@ def entries_collection():
     with closing(conn):
         cursor = conn.cursor(dictionary=True)
         try:
+            preferences = _load_calendar_preferences(conn, int(user_id))
+            show_completed_todos = bool(preferences.get('show_completed_todos'))
             rows = []
             if class_id:
                 cursor.execute(
                     """
-                    SELECT id, beschreibung, datum, enddatum, startzeit, endzeit, typ, fach
+                    SELECT id, class_id, beschreibung, datum, enddatum, startzeit, endzeit, typ, fach, owner_user_id
                     FROM eintraege
                     WHERE class_id=%s
                       AND COALESCE(is_private, 0)=0
@@ -1827,22 +2161,32 @@ def entries_collection():
                 for row in (cursor.fetchall() or []):
                     row['is_private'] = False
                     row['is_owned'] = False
+                    row['can_edit'] = _can_edit_class_entry(
+                        session.get('role'),
+                        int(user_id),
+                        row.get('owner_user_id'),
+                        row.get('class_id') or class_id,
+                    )
                     rows.append(row)
 
             cursor.execute(
                 """
-                SELECT id, beschreibung, datum, enddatum, startzeit, endzeit, typ, fach
+                SELECT id, beschreibung, datum, enddatum, startzeit, endzeit, typ, fach, is_done, todo_status
                 FROM eintraege
                 WHERE COALESCE(is_private, 0)=1
                   AND owner_user_id=%s
                   AND typ='todo'
+                  AND (%s=1 OR COALESCE(todo_status, CASE WHEN COALESCE(is_done, 0)=1 THEN %s ELSE %s END) <> %s)
                 ORDER BY datum ASC, startzeit ASC
                 """,
-                (int(user_id),),
+                (int(user_id), 1 if show_completed_todos else 0, TODO_STATUS_DONE, TODO_STATUS_OPEN, TODO_STATUS_DONE),
             )
             for row in (cursor.fetchall() or []):
                 row['is_private'] = True
                 row['is_owned'] = True
+                row['can_edit'] = False
+                row['can_update_status'] = True
+                row['todo_status'] = _normalize_todo_status(row.get('todo_status'), row.get('is_done'))
                 rows.append(row)
 
             rows.sort(key=lambda item: (str(item.get('datum') or ''), str(item.get('startzeit') or '')))
@@ -1866,6 +2210,123 @@ def entries_collection():
         finally:
             cursor.close()
     return jsonify(rows)
+
+
+def _normalize_todo_status(value: Optional[object], is_done: Optional[object] = None) -> str:
+    status = str(value or '').strip()
+    if status in TODO_STATUS_VALUES:
+        return status
+    if _parse_bool(is_done, default=False):
+        return TODO_STATUS_DONE
+    return TODO_STATUS_OPEN
+
+
+def _load_calendar_preferences(conn, user_id: int) -> Dict[str, Any]:
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute(
+            "SELECT muted_subjects, show_completed_todos FROM calendar_preferences WHERE user_id=%s",
+            (int(user_id),),
+        )
+        row = cursor.fetchone() or {}
+    except mysql.connector.Error:
+        row = {}
+    finally:
+        cursor.close()
+
+    raw_subjects = row.get('muted_subjects') if row else ''
+    muted_subjects: List[str] = []
+    if raw_subjects:
+        try:
+            parsed = json.loads(raw_subjects)
+            if isinstance(parsed, list):
+                muted_subjects = [str(item).strip() for item in parsed if str(item).strip()]
+        except (TypeError, ValueError):
+            muted_subjects = []
+    return {
+        'muted_subjects': list(OrderedDict.fromkeys(muted_subjects)),
+        'show_completed_todos': bool(row.get('show_completed_todos')) if row else False,
+    }
+
+
+def _can_edit_class_entry(role: Optional[str], user_id: int, owner_user_id: Optional[object], class_id: Optional[str]) -> bool:
+    if role == 'admin':
+        return True
+    if role == 'class_admin':
+        allowed_class = _get_session_entry_class_id() or ''
+        return bool(allowed_class and class_id == allowed_class)
+    if role == 'teacher':
+        try:
+            return owner_user_id is not None and int(owner_user_id) == int(user_id)
+        except (TypeError, ValueError):
+            return False
+    return False
+
+
+@app.route('/api/calendar/preferences', methods=['GET', 'PUT', 'OPTIONS'])
+@require_authenticated
+def calendar_preferences():
+    if request.method == 'OPTIONS':
+        return _cors_preflight()
+
+    if HWM_DEBUG_MODE:
+        return jsonify(status='ok', data=_debug_calendar_preferences())
+
+    user_id = session.get('user_id')
+    if user_id is None:
+        return jsonify(error='unauthorized', message='Missing session'), 401
+    user_id = int(user_id)
+
+    try:
+        conn = get_connection()
+    except Exception:
+        return jsonify(status='error', message='database_unavailable'), 503
+
+    with closing(conn):
+        if request.method == 'GET':
+            return jsonify(status='ok', data=_load_calendar_preferences(conn, user_id))
+
+        data = request.json or {}
+        muted_raw = data.get('muted_subjects', [])
+        if muted_raw is None:
+            muted_raw = []
+        if not isinstance(muted_raw, list):
+            return jsonify(status='error', message='invalid_muted_subjects'), 400
+        muted_subjects = [
+            str(item).strip()
+            for item in muted_raw
+            if str(item).strip()
+        ]
+        muted_subjects = list(OrderedDict.fromkeys(muted_subjects))
+        show_completed_todos = _parse_bool(data.get('show_completed_todos'), default=False)
+        cursor = conn.cursor()
+        try:
+            now = datetime.datetime.utcnow()
+            cursor.execute(
+                """
+                INSERT INTO calendar_preferences (user_id, muted_subjects, show_completed_todos, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                  muted_subjects=VALUES(muted_subjects),
+                  show_completed_todos=VALUES(show_completed_todos),
+                  updated_at=VALUES(updated_at)
+                """,
+                (
+                    user_id,
+                    json.dumps(muted_subjects),
+                    1 if show_completed_todos else 0,
+                    now,
+                    now,
+                ),
+            )
+            conn.commit()
+        except mysql.connector.Error:
+            conn.rollback()
+            return jsonify(status='error', message='database_unavailable'), 503
+        finally:
+            cursor.close()
+
+        return jsonify(status='ok', data=_load_calendar_preferences(conn, user_id))
 
 
 def _resolve_weekly_preview_locale() -> str:
@@ -2424,7 +2885,7 @@ def weekly_preview():
         )
 
 
-@app.route('/api/todos', methods=['POST', 'OPTIONS'])
+@app.route('/api/todos', methods=['GET', 'POST', 'OPTIONS'])
 @require_authenticated
 def todos_collection():
     if request.method == 'OPTIONS':
@@ -2434,12 +2895,72 @@ def todos_collection():
     user_id = session.get('user_id')
     if user_id is None:
         return jsonify(error='unauthorized', message='Missing session'), 401
+    user_id = int(user_id)
+
+    if request.method == 'GET':
+        try:
+            conn = get_connection()
+        except Exception:
+            return jsonify(status='error', message='database_unavailable'), 503
+
+        with closing(conn):
+            cursor = conn.cursor(dictionary=True)
+            try:
+                cursor.execute(
+                    """
+                    SELECT id, beschreibung, datum, enddatum, startzeit, endzeit, typ, fach, is_done, todo_status
+                    FROM eintraege
+                    WHERE COALESCE(is_private, 0)=1
+                      AND owner_user_id=%s
+                      AND typ='todo'
+                    ORDER BY datum ASC, startzeit ASC, id ASC
+                    """,
+                    (user_id,),
+                )
+                rows = cursor.fetchall() or []
+                subtasks_by_todo = _load_todo_subtasks(conn, [row.get('id') for row in rows], user_id)
+                todos = []
+                for row in rows:
+                    todo_id = int(row.get('id') or 0)
+                    datum = row.get('datum')
+                    enddatum = row.get('enddatum')
+                    todos.append(
+                        {
+                            'id': todo_id,
+                            'beschreibung': row.get('beschreibung') or '',
+                            'datum': _serialize_value(datum),
+                            'enddatum': _serialize_value(enddatum),
+                            'startzeit': _format_time_value(row.get('startzeit')),
+                            'endzeit': _format_time_value(row.get('endzeit')),
+                            'typ': 'todo',
+                            'fach': row.get('fach') or '',
+                            'is_done': bool(row.get('is_done')),
+                            'todo_status': _normalize_todo_status(row.get('todo_status'), row.get('is_done')),
+                            'is_private': True,
+                            'is_owned': True,
+                            'subtasks': subtasks_by_todo.get(todo_id, []),
+                        }
+                    )
+                return jsonify(status='ok', data=todos)
+            except mysql.connector.Error:
+                return jsonify(status='error', message='database_unavailable'), 503
+            finally:
+                cursor.close()
 
     beschreibung = (data.get("beschreibung") or '').strip()
     datum_input = data.get("datum")
     startzeit = data.get("startzeit")
     endzeit = data.get("endzeit")
     enddatum_input = data.get("enddatum")
+    try:
+        subtasks = _normalize_todo_subtasks(data.get('subtasks'))
+    except ValueError as exc:
+        return jsonify(status='error', message=str(exc)), 400
+    todo_status = _normalize_todo_status(data.get('todo_status'), data.get('is_done'))
+    if 'todo_status' not in data:
+        is_done_default = bool(subtasks) and all(item.get('is_done') for item in subtasks)
+        todo_status = TODO_STATUS_DONE if _parse_bool(data.get('is_done'), default=is_done_default) else TODO_STATUS_OPEN
+    is_done = todo_status == TODO_STATUS_DONE
 
     if startzeit == '':
         startzeit = None
@@ -2480,16 +3001,17 @@ def todos_collection():
     try:
         cur.execute(
             """
-            INSERT INTO eintraege (class_id, beschreibung, datum, enddatum, startzeit, endzeit, typ, fach, owner_user_id, is_private)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            INSERT INTO eintraege (class_id, beschreibung, datum, enddatum, startzeit, endzeit, typ, fach, owner_user_id, is_private, is_done, todo_status)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """,
-            (entry_class_id, beschreibung, datum, enddatum, startzeit, endzeit, 'todo', '', int(user_id), 1),
+            (entry_class_id, beschreibung, datum, enddatum, startzeit, endzeit, 'todo', '', int(user_id), 1, 1 if is_done else 0, todo_status),
         )
         entry_id = cur.lastrowid
+        _replace_todo_subtasks(conn, entry_id, user_id, subtasks)
         conn.commit()
         _log_user_event(
             'todo_create',
-            user_id=int(user_id),
+            user_id=user_id,
             entry_id=entry_id,
             datum=datum,
             enddatum=enddatum,
@@ -2509,6 +3031,13 @@ def todo_resource(entry_id: int):
     if request.method == 'OPTIONS':
         return _cors_preflight()
 
+    if HWM_DEBUG_MODE:
+        if request.method == 'DELETE':
+            return jsonify(status='ok')
+        data = request.json or {}
+        todo_status = _normalize_todo_status(data.get('todo_status'), data.get('is_done'))
+        return jsonify(status='ok', todo_status=todo_status)
+
     user_id = session.get('user_id')
     if user_id is None:
         return jsonify(error='unauthorized', message='Missing session'), 401
@@ -2519,7 +3048,7 @@ def todo_resource(entry_id: int):
     try:
         lookup_cursor.execute(
             """
-            SELECT id, owner_user_id, is_private, typ
+            SELECT id, owner_user_id, is_private, typ, is_done, todo_status
             FROM eintraege
             WHERE id=%s
               AND COALESCE(is_private, 0)=1
@@ -2536,6 +3065,10 @@ def todo_resource(entry_id: int):
         if request.method == 'DELETE':
             write_cursor = conn.cursor()
             write_cursor.execute(
+                "DELETE FROM todo_subtasks WHERE todo_id=%s AND owner_user_id=%s",
+                (entry_id, user_id),
+            )
+            write_cursor.execute(
                 "DELETE FROM eintraege WHERE id=%s AND owner_user_id=%s AND COALESCE(is_private, 0)=1 AND typ='todo'",
                 (entry_id, user_id),
             )
@@ -2545,11 +3078,44 @@ def todo_resource(entry_id: int):
             return jsonify(status='ok')
 
         data = request.json or {}
+        if set(data.keys()).issubset({'todo_status', 'is_done'}):
+            todo_status = _normalize_todo_status(data.get('todo_status'), existing.get('is_done'))
+            if 'is_done' in data and 'todo_status' not in data:
+                todo_status = TODO_STATUS_DONE if _parse_bool(data.get('is_done'), default=False) else TODO_STATUS_OPEN
+            is_done = todo_status == TODO_STATUS_DONE
+            write_cursor = conn.cursor()
+            write_cursor.execute(
+                """
+                UPDATE eintraege
+                SET is_done=%s, todo_status=%s
+                WHERE id=%s
+                  AND owner_user_id=%s
+                  AND COALESCE(is_private, 0)=1
+                  AND typ='todo'
+                """,
+                (1 if is_done else 0, todo_status, entry_id, user_id),
+            )
+            write_cursor.close()
+            conn.commit()
+            _log_user_event('todo_status_update', user_id=user_id, entry_id=entry_id, todo_status=todo_status)
+            return jsonify(status='ok', todo_status=todo_status)
+
         beschreibung = (data.get("beschreibung") or '').strip()
         datum_input = data.get("datum")
         startzeit = data.get("startzeit")
         endzeit = data.get("endzeit")
         enddatum_input = data.get("enddatum")
+        replace_subtasks = 'subtasks' in data
+        subtasks: List[Dict[str, Any]] = []
+        if replace_subtasks:
+            try:
+                subtasks = _normalize_todo_subtasks(data.get('subtasks'))
+            except ValueError as exc:
+                return jsonify(status='error', message=str(exc)), 400
+        todo_status = _normalize_todo_status(data.get('todo_status'), existing.get('is_done'))
+        if 'is_done' in data and 'todo_status' not in data:
+            todo_status = TODO_STATUS_DONE if _parse_bool(data.get('is_done'), default=False) else TODO_STATUS_OPEN
+        is_done = todo_status == TODO_STATUS_DONE
 
         if startzeit == '':
             startzeit = None
@@ -2586,15 +3152,17 @@ def todo_resource(entry_id: int):
         write_cursor.execute(
             """
             UPDATE eintraege
-            SET beschreibung=%s, datum=%s, enddatum=%s, startzeit=%s, endzeit=%s, fach=%s
+            SET beschreibung=%s, datum=%s, enddatum=%s, startzeit=%s, endzeit=%s, fach=%s, is_done=%s, todo_status=%s
             WHERE id=%s
               AND owner_user_id=%s
               AND COALESCE(is_private, 0)=1
               AND typ='todo'
             """,
-            (beschreibung, datum, enddatum, startzeit, endzeit, '', entry_id, user_id),
+            (beschreibung, datum, enddatum, startzeit, endzeit, '', 1 if is_done else 0, todo_status, entry_id, user_id),
         )
         write_cursor.close()
+        if replace_subtasks:
+            _replace_todo_subtasks(conn, entry_id, user_id, subtasks)
         conn.commit()
         _log_user_event('todo_update', user_id=user_id, entry_id=entry_id, datum=datum, enddatum=enddatum)
         return jsonify(status='ok')
@@ -4229,6 +4797,9 @@ def admin_schedule_entries_resource(entry_id: int):
 @app.route('/api/classes', methods=['GET'])
 @require_role('admin', 'class_admin', 'teacher')
 def list_classes():
+    if HWM_DEBUG_MODE:
+        return jsonify(DEBUG_CLASSES)
+
     role = session.get('role')
     is_admin = role == 'admin'
     class_id = _get_session_class_id()
@@ -4257,6 +4828,17 @@ def list_classes():
                     (class_id,),
                 )
             rows = cursor.fetchall() or []
+            if role in {'admin', 'teacher'} and not any((row.get('slug') or '') == GLOBAL_ENTRY_CLASS_ID for row in rows):
+                rows.insert(
+                    0,
+                    {
+                        'id': None,
+                        'slug': GLOBAL_ENTRY_CLASS_ID,
+                        'title': 'Alle Klassen',
+                        'description': 'Schulweite Einträge',
+                        'is_active': 1,
+                    },
+                )
         except mysql.connector.Error:
             return jsonify({'status': 'error', 'message': 'database_unavailable'}), 503
         finally:
@@ -4269,6 +4851,28 @@ def list_classes():
 def manage_session_class():
     if request.method == 'OPTIONS':
         return _cors_preflight()
+
+    if HWM_DEBUG_MODE:
+        if request.method == 'GET':
+            return jsonify({
+                'status': 'ok',
+                'class_id': session.get('entry_class_id') or 'l23a-test',
+                'class_slug': session.get('class_slug') or 'l23a-test',
+                'class_numeric_id': 23,
+            })
+        data = request.json or {}
+        raw_class = (data.get('class_id') or data.get('class_slug') or 'l23a-test').strip()
+        if not raw_class:
+            raw_class = 'l23a-test'
+        session['class_slug'] = raw_class
+        session['entry_class_id'] = raw_class
+        return jsonify({
+            'status': 'ok',
+            'class_id': raw_class,
+            'class_slug': raw_class,
+            'class_numeric_id': None if raw_class == GLOBAL_ENTRY_CLASS_ID else 23,
+            'class_title': 'Alle Klassen' if raw_class == GLOBAL_ENTRY_CLASS_ID else raw_class,
+        })
 
     role = session.get('role') or 'guest'
 
@@ -4307,6 +4911,18 @@ def manage_session_class():
         normalized = _normalize_entry_class_id(raw_class)
     except ValueError:
         return jsonify({'status': 'error', 'message': 'invalid_class_id'}), 400
+
+    if normalized == GLOBAL_ENTRY_CLASS_ID:
+        session.pop('class_id', None)
+        session['class_slug'] = GLOBAL_ENTRY_CLASS_ID
+        session['entry_class_id'] = GLOBAL_ENTRY_CLASS_ID
+        return jsonify({
+            'status': 'ok',
+            'class_id': GLOBAL_ENTRY_CLASS_ID,
+            'class_slug': GLOBAL_ENTRY_CLASS_ID,
+            'class_numeric_id': None,
+            'class_title': 'Alle Klassen',
+        })
 
     try:
         conn = get_connection()
@@ -4389,6 +5005,22 @@ def assign_user_to_class(user_id: int):
 def current_user_profile():
     if request.method == 'OPTIONS':
         return _cors_preflight()
+
+    if HWM_DEBUG_MODE:
+        if request.method == 'DELETE':
+            return jsonify(status='ok')
+        return jsonify(status='ok', data={
+            'id': 1,
+            'email': 'debug@localhost',
+            'role': 'admin',
+            'class_id': 23,
+            'class_slug': 'l23a-test',
+            'class_title': 'Test class L23a',
+            'created_at': datetime.datetime.utcnow().isoformat(),
+            'account_age_days': 0,
+            'class_change_remaining_days': None,
+            'class_change_available_at': None,
+        })
 
     user_id = g.get('user', {}).get('id')
     try:
@@ -4576,6 +5208,9 @@ def update_entry():
     if request.method == 'OPTIONS':
         return _cors_preflight()
 
+    if HWM_DEBUG_MODE:
+        return jsonify(status='ok', updated=1, debug=True)
+
     data = request.json or {}
 
     try:
@@ -4611,6 +5246,10 @@ def update_entry():
         return jsonify(status='error', message='ungültiges datum'), 400
     if typ == 'todo':
         return jsonify(status='error', message='todo_type_not_allowed_here'), 400
+    role = session.get('role')
+    user_id = session.get('user_id')
+    if typ == 'ferien' and role != 'admin':
+        return jsonify(status='error', message='forbidden'), 403
 
     parsed_end_date = _parse_iso_date(enddatum_input) if enddatum_input not in (None, '') else None
     if enddatum_input not in (None, '') and parsed_end_date is None:
@@ -4629,7 +5268,6 @@ def update_entry():
         fach = ''
 
 
-    role = session.get('role')
     conn = get_connection()
     cur = conn.cursor()
     try:
@@ -4663,16 +5301,22 @@ def update_entry():
         class_ids = list(OrderedDict.fromkeys(class_ids))
         if not class_ids:
             return jsonify(status='error', message='Eintrag nicht gefunden'), 404
+        if GLOBAL_ENTRY_CLASS_ID in class_ids and typ not in {'event', 'ferien'}:
+            return jsonify(status='error', message='default_class_restricted'), 400
 
         for class_id in class_ids:
             cur.execute(
-                "SELECT 1 FROM eintraege WHERE id=%s AND class_id=%s AND COALESCE(is_private, 0)=0",
+                "SELECT owner_user_id FROM eintraege WHERE id=%s AND class_id=%s AND COALESCE(is_private, 0)=0",
                 (entry_id, class_id),
             )
             row = cur.fetchone()
             if not row:
                 conn.rollback()
                 return jsonify(status='error', message='Eintrag nicht gefunden'), 404
+            owner_user_id = row[0] if not isinstance(row, dict) else row.get('owner_user_id')
+            if not _can_edit_class_entry(role, int(user_id or 0), owner_user_id, class_id):
+                conn.rollback()
+                return jsonify(status='error', message='forbidden'), 403
 
         for class_id in class_ids:
             cur.execute(
@@ -4712,7 +5356,11 @@ def delete_entry(id):
     if request.method == 'OPTIONS':
         return _cors_preflight()
 
+    if HWM_DEBUG_MODE:
+        return jsonify(status='ok', debug=True)
+
     role = session.get('role')
+    user_id = int(session.get('user_id') or 0)
     if role == 'class_admin':
         raw_class_id = request.args.get('class_id')
         if raw_class_id is None:
@@ -4731,6 +5379,15 @@ def delete_entry(id):
     conn = get_connection()
     cur = conn.cursor()
     try:
+        if role == 'teacher':
+            cur.execute(
+                "SELECT owner_user_id FROM eintraege WHERE id=%s AND COALESCE(is_private, 0)=0 LIMIT 1",
+                (id,),
+            )
+            row = cur.fetchone()
+            owner_user_id = row[0] if row else None
+            if owner_user_id is None or int(owner_user_id) != user_id:
+                return jsonify(status='error', message='forbidden'), 403
         if role == 'class_admin':
             cur.execute(
                 "DELETE FROM eintraege WHERE id=%s AND class_id=%s AND COALESCE(is_private, 0)=0",
@@ -4738,10 +5395,16 @@ def delete_entry(id):
             )
         else:
             # coupled entries: delete all class rows that share this id
-            cur.execute(
-                "DELETE FROM eintraege WHERE id=%s AND COALESCE(is_private, 0)=0",
-                (id,),
-            )
+            if role == 'teacher':
+                cur.execute(
+                    "DELETE FROM eintraege WHERE id=%s AND owner_user_id=%s AND COALESCE(is_private, 0)=0",
+                    (id, user_id),
+                )
+            else:
+                cur.execute(
+                    "DELETE FROM eintraege WHERE id=%s AND COALESCE(is_private, 0)=0",
+                    (id,),
+                )
         deleted = cur.rowcount or 0
         conn.commit()
         if deleted:
@@ -4889,6 +5552,9 @@ def add_entry():
     if request.method == 'OPTIONS':
         return _cors_preflight()
 
+    if HWM_DEBUG_MODE:
+        return jsonify(status='ok', created=1, id=9999, debug=True)
+
     data = request.json or {}
     try:
         class_ids = _normalize_entry_class_id_list(data.get('class_ids'))
@@ -4932,6 +5598,10 @@ def add_entry():
         return jsonify(status="error", message="typ und datum sind erforderlich"), 400
     if typ == 'todo':
         return jsonify(status='error', message='todo_type_not_allowed_here'), 400
+    role = session.get('role')
+    user_id = int(session.get('user_id') or 0)
+    if typ == 'ferien' and role != 'admin':
+        return jsonify(status='error', message='forbidden'), 403
 
     start_date = _parse_iso_date(datum_input)
     if start_date is None:
@@ -4953,7 +5623,6 @@ def add_entry():
     if not fach:
         fach = ''
 
-    role = session.get('role')
     if role == 'class_admin':
         allowed_class = _get_session_entry_class_id() or ''
         if not allowed_class:
@@ -4961,6 +5630,9 @@ def add_entry():
         if any(class_id != allowed_class for class_id in class_ids):
             return jsonify(status='error', message='forbidden'), 403
         class_ids = [allowed_class]
+
+    if GLOBAL_ENTRY_CLASS_ID in class_ids and typ not in {'event', 'ferien'}:
+        return jsonify(status='error', message='default_class_restricted'), 400
 
     conn = get_connection(); cur = conn.cursor()
     try:
@@ -4970,7 +5642,7 @@ def add_entry():
             INSERT INTO eintraege (class_id, beschreibung, datum, enddatum, startzeit, endzeit, typ, fach, owner_user_id, is_private)
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             """,
-            (first_class, beschreibung, datum, enddatum, startzeit, endzeit, typ, fach, None, 0),
+            (first_class, beschreibung, datum, enddatum, startzeit, endzeit, typ, fach, user_id or None, 0),
         )
         entry_id = cur.lastrowid
 
@@ -4980,7 +5652,7 @@ def add_entry():
                 INSERT INTO eintraege (id, class_id, beschreibung, datum, enddatum, startzeit, endzeit, typ, fach, owner_user_id, is_private)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 """,
-                (entry_id, extra_class, beschreibung, datum, enddatum, startzeit, endzeit, typ, fach, None, 0),
+                (entry_id, extra_class, beschreibung, datum, enddatum, startzeit, endzeit, typ, fach, user_id or None, 0),
             )
 
         conn.commit()

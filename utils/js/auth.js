@@ -99,10 +99,41 @@ const LOGIN_TEXT = {
     close: authT('close', 'Close')
 };
 
+function resolveHomeworkApiBase() {
+    const productionBase = 'https://hwm-api.akzuwo.ch';
+    const envBase = import.meta.env?.VITE_HWM_API_BASE;
+    const envDebug = String(import.meta.env?.VITE_HWM_DEBUG_API || '').toLowerCase();
+    let debugEnabled = envDebug === '1' || envDebug === 'true' || envDebug === 'yes' || envDebug === 'on';
+    if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search || '');
+        if (params.has('hm_debug')) {
+            debugEnabled = !['0', 'false', 'off', 'no'].includes(String(params.get('hm_debug') || '').toLowerCase());
+            try {
+                window.localStorage.setItem('hm.debugApi', debugEnabled ? 'true' : 'false');
+            } catch (error) {
+                // localStorage may be unavailable in private browsing contexts.
+            }
+        } else {
+            try {
+                debugEnabled = debugEnabled || window.localStorage.getItem('hm.debugApi') === 'true';
+            } catch (error) {
+                // Ignore unavailable localStorage.
+            }
+        }
+    }
+    const base = (envBase && String(envBase).trim()) || (debugEnabled ? 'http://127.0.0.1:5000' : productionBase);
+    return {
+        base: base.replace(/\/+$/, ''),
+        debugEnabled: debugEnabled || String(base).includes('127.0.0.1') || String(base).includes('localhost')
+    };
+}
+
 const API_BASE = (() => {
-    const base = 'https://hwm-api.akzuwo.ch';
+    const resolved = resolveHomeworkApiBase();
+    const base = resolved.base;
     if (typeof window !== 'undefined') {
         window.__HM_RESOLVED_API_BASE__ = base;
+        window.__HM_API_DEBUG_MODE__ = resolved.debugEnabled;
         window.hmResolveApiBase = () => base;
     }
     return base;
@@ -264,6 +295,13 @@ function normalizeSession(data = {}) {
 }
 
 function loadStoredSession() {
+    if (typeof window !== 'undefined' && window.__HM_API_DEBUG_MODE__) {
+        return {
+            role: 'admin',
+            email: 'debug@localhost',
+            emailVerified: true
+        };
+    }
     try {
         const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
         if (!raw) {
@@ -2079,7 +2117,7 @@ async function logout() {
 }
 
 const CREATE_DISABLED_MESSAGE = (window.hmI18n && window.hmI18n.get('calendar.actions.create.disabled'))
-    || 'Please sign in to create personal todos.';
+    || 'Du hast keine Berechtigung, Kalendereinträge zu erstellen.';
 
 const CALENDAR_MODAL_SCOPE = window.hmI18n ? window.hmI18n.scope('calendar.modal') : (key, fallback) => fallback;
 
@@ -2657,7 +2695,7 @@ function closeEntryModal() {
         form.reset();
         form.dataset.allowEmptySubject = 'true';
         const controller = setupModalFormInteractions(form);
-        controller?.setType(canManageEntries() ? 'event' : 'todo');
+        controller?.setType('event');
         controller?.evaluate();
         if (window.hmEntryClassPicker && typeof window.hmEntryClassPicker.reset === 'function') {
             window.hmEntryClassPicker.reset();
@@ -2671,10 +2709,10 @@ const ENTRY_FORM_MESSAGES = {
     invalidEndDate: 'The end date must not be earlier than the start date.',
     missingSubject: 'Please choose a subject.',
     missingEventTitle: 'Please enter an event title.',
-    missingClass: 'Please select a class.',
-    missingClasses: 'Please select at least one class.',
-    missingEndDate: 'Please enter an end date.',
-    classLoadError: 'Unable to load classes.'
+    missingClass: 'Bitte wähle eine Klasse aus.',
+    missingClasses: 'Bitte wähle mindestens eine Klasse aus.',
+    missingEndDate: 'Bitte gib ein Enddatum ein.',
+    classLoadError: 'Klassen konnten nicht geladen werden.'
 };
 
 if (window.hmI18n) {
@@ -2728,7 +2766,7 @@ const entryClassPicker = (() => {
     }
 
     function shouldAllowSelection() {
-        return Boolean(sessionState.isAdmin || sessionState.isClassAdmin);
+        return Boolean(sessionState.isAdmin || sessionState.isClassAdmin || sessionState.role === 'teacher');
     }
 
     function setFieldVisibility(container, options, visible) {
@@ -2828,6 +2866,16 @@ const entryClassPicker = (() => {
         return values;
     }
 
+    function getClassDisplayLabel(cls) {
+        if (!cls || !cls.slug) {
+            return '';
+        }
+        if (cls.slug === 'default') {
+            return window.hmI18n?.get?.('calendar.classSelector.allClasses') || 'Alle Klassen';
+        }
+        return cls.title ? `${cls.title} (${cls.slug})` : cls.slug;
+    }
+
     function populateOptions(options, classes, selectedValues) {
         if (!options) {
             return;
@@ -2857,7 +2905,7 @@ const entryClassPicker = (() => {
                 }
             });
             const text = document.createElement('span');
-            text.textContent = cls.title ? `${cls.title} (${cls.slug})` : cls.slug;
+            text.textContent = getClassDisplayLabel(cls);
             label.append(checkbox, text);
             fragment.appendChild(label);
         });
@@ -2896,7 +2944,7 @@ const entryClassPicker = (() => {
     }
 
     function resolveBaseAllowMultiple() {
-        baseAllowMultiple = Boolean(sessionState.isAdmin);
+        baseAllowMultiple = Boolean(sessionState.isAdmin || sessionState.role === 'teacher');
         return baseAllowMultiple;
     }
 
@@ -3127,7 +3175,7 @@ function setupModalFormInteractions(form, initialMessages = ENTRY_FORM_MESSAGES)
         const isHoliday = typeSelect && typeSelect.value === 'ferien';
         const isTodo = typeSelect && typeSelect.value === 'todo';
         const allowEmptySubject = form.dataset.allowEmptySubject === 'true';
-        const requireStart = !isHoliday && !isTodo && form.id === 'entry-form';
+        const requireStart = false;
 
         if (dateInput) {
             const iso = parseSwissDate(dateInput.value);
@@ -3220,7 +3268,7 @@ function setupModalFormInteractions(form, initialMessages = ENTRY_FORM_MESSAGES)
         const isEvent = typeSelect && typeSelect.value === 'event';
         const isHoliday = typeSelect && typeSelect.value === 'ferien';
         const isTodo = typeSelect && typeSelect.value === 'todo';
-        const allowMultipleClasses = Boolean(sessionState.isAdmin && (isEvent || isHoliday));
+        const allowMultipleClasses = Boolean((sessionState.isAdmin || sessionState.role === 'teacher') && !isTodo);
 
         if (subjectGroup) {
             subjectGroup.classList.toggle('is-hidden', isEvent || isHoliday || isTodo);
@@ -3375,7 +3423,7 @@ function setupModalFormInteractions(form, initialMessages = ENTRY_FORM_MESSAGES)
 }
 
 async function showEntryForm(defaults = null) {
-    if (!canManageEntries() && !canCreatePersonalTodos()) {
+    if (!canManageEntries()) {
         showOverlay(CREATE_DISABLED_MESSAGE, 'error');
         return;
     }
@@ -3388,14 +3436,14 @@ async function showEntryForm(defaults = null) {
 
     form._hmEntryDefaults = defaults ? { ...defaults } : {};
     if (!Object.prototype.hasOwnProperty.call(form._hmEntryDefaults, 'type')) {
-        form._hmEntryDefaults.type = canManageEntries() ? 'event' : 'todo';
+        form._hmEntryDefaults.type = 'event';
     }
     form.dataset.allowEmptySubject = 'true';
     const controller = setupModalFormInteractions(form);
     form.reset();
     if (controller) {
         if (!form._hmEntryDefaults || !Object.prototype.hasOwnProperty.call(form._hmEntryDefaults, 'type')) {
-            controller.setType(canManageEntries() ? 'event' : 'todo');
+            controller.setType('event');
         } else {
             controller.toggleTypeFields();
             controller.evaluate();
@@ -3405,28 +3453,19 @@ async function showEntryForm(defaults = null) {
     const typeField = form.querySelector('#typ');
     const typeFieldGroup = form.querySelector('[data-field="type"]');
     if (typeField) {
-        if (canManageEntries()) {
-            if (typeFieldGroup) {
-                typeFieldGroup.classList.remove('is-hidden');
-            }
-            Array.from(typeField.options || []).forEach((option) => {
-                option.hidden = false;
-                option.disabled = false;
-            });
-            typeField.disabled = false;
-        } else {
-            if (typeFieldGroup) {
-                typeFieldGroup.classList.add('is-hidden');
-            }
-            Array.from(typeField.options || []).forEach((option) => {
-                const keep = option.value === 'todo';
-                option.hidden = !keep;
-                option.disabled = !keep;
-            });
-            typeField.value = 'todo';
-            typeField.disabled = true;
-            controller?.setType('todo');
+        if (typeFieldGroup) {
+            typeFieldGroup.classList.remove('is-hidden');
         }
+        Array.from(typeField.options || []).forEach((option) => {
+            const keep = option.value !== 'todo';
+            option.hidden = !keep;
+            option.disabled = !keep;
+        });
+        if (typeField.value === 'todo') {
+            typeField.value = 'event';
+            controller?.setType('event');
+        }
+        typeField.disabled = false;
     }
 
     if (canManageEntries() && window.hmEntryClassPicker && typeof window.hmEntryClassPicker.prepare === 'function') {
@@ -3565,8 +3604,13 @@ async function saveEntry(event) {
     const entryClassPickerController = window.hmEntryClassPicker;
     let selectedClassIds = [];
 
-    const canChooseClasses = Boolean(sessionState.isAdmin || sessionState.isClassAdmin);
-    const adminCanLinkAcrossClasses = Boolean(sessionState.isAdmin && (typ === 'event' || typ === 'ferien'));
+    if (isTodo) {
+        showOverlay(CREATE_DISABLED_MESSAGE, 'error');
+        return;
+    }
+
+    const canChooseClasses = Boolean(sessionState.isAdmin || sessionState.isClassAdmin || sessionState.role === 'teacher');
+    const adminCanLinkAcrossClasses = Boolean((sessionState.isAdmin || sessionState.role === 'teacher') && !isTodo);
     const multipleAllowedForSelection = adminCanLinkAcrossClasses
         && (
             !entryClassPickerController
@@ -3651,7 +3695,7 @@ async function saveEntry(event) {
                 await refreshCalendarEntries();
                 if (form) {
                     form.reset();
-                    controller?.setType(canManageEntries() ? 'event' : 'todo');
+                    controller?.setType('event');
                 }
             } else {
                 console.error("Server error while saving:", result.message);
@@ -3674,7 +3718,7 @@ async function saveEntry(event) {
         // Reset input fields
         if (form) {
             form.reset();
-            controller?.setType(canManageEntries() ? 'event' : 'todo');
+            controller?.setType('event');
         }
     }
 

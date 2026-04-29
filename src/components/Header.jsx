@@ -4,6 +4,7 @@ const navItems = [
   { href: '/index.html', label: 'Startseite', key: 'common.nav.home' },
   { href: '/kalender.html', label: 'Kalender', key: 'common.nav.calendar' },
   { href: '/upcoming.html', label: 'Anstehend', key: 'common.nav.upcoming' },
+  { href: '/todos.html', label: 'ToDos', key: 'common.nav.todos' },
   { href: '/weekly-preview.html', label: 'Wochenvorschau', key: 'common.nav.weeklyPreview' },
   { href: '/stundenplan.html', label: 'Aktuelles Fach', key: 'common.nav.currentSubject' },
   { href: '/notenrechner.html', label: 'Notenrechner', key: 'common.nav.grades' }

@@ -46,6 +46,7 @@ class FakeCursor:
         schedules: Dict[int, Dict[str, object]] = self.storage.setdefault('class_schedules', {})
         schedule_entries: List[Dict[str, object]] = self.storage.setdefault('stundenplan_entries', [])
         entries: List[Dict[str, object]] = self.storage.setdefault('eintraege', [])
+        todo_subtasks: List[Dict[str, object]] = self.storage.setdefault('todo_subtasks', [])
         password_resets: List[Dict[str, object]] = self.storage.setdefault('password_resets', [])
         weekly_preview_cache: List[Dict[str, object]] = self.storage.setdefault('weekly_preview_cache', [])
 
@@ -948,7 +949,7 @@ class FakeCursor:
 
         if (
             normalized.startswith(
-                "select id, beschreibung, datum, enddatum, startzeit, endzeit, typ, fach from eintraege"
+                "select id, beschreibung, datum, enddatum, startzeit, endzeit, typ, fach, is_done from eintraege"
             )
             and "owner_user_id=%s" in normalized
             and "typ='todo'" in normalized
@@ -964,6 +965,7 @@ class FakeCursor:
                     'endzeit': entry.get('endzeit'),
                     'typ': entry.get('typ'),
                     'fach': entry.get('fach'),
+                    'is_done': entry.get('is_done', 0),
                 }
                 for entry in entries
                 if int(entry.get('is_private') or 0) == 1
@@ -978,8 +980,64 @@ class FakeCursor:
             )
             self._prepare_rows(
                 filtered,
-                ['id', 'beschreibung', 'datum', 'enddatum', 'startzeit', 'endzeit', 'typ', 'fach'],
+                ['id', 'beschreibung', 'datum', 'enddatum', 'startzeit', 'endzeit', 'typ', 'fach', 'is_done'],
             )
+            return
+
+        if (
+            normalized.startswith("select id, todo_id, title, is_done, sort_order from todo_subtasks")
+            and "owner_user_id=%s" in normalized
+            and "todo_id in" in normalized
+        ):
+            owner_user_id = params[0]
+            todo_ids = {int(value) for value in params[1:]}
+            rows = [
+                {
+                    'id': subtask.get('id'),
+                    'todo_id': subtask.get('todo_id'),
+                    'title': subtask.get('title'),
+                    'is_done': subtask.get('is_done'),
+                    'sort_order': subtask.get('sort_order'),
+                }
+                for subtask in todo_subtasks
+                if int(subtask.get('owner_user_id') or 0) == int(owner_user_id)
+                and int(subtask.get('todo_id') or 0) in todo_ids
+            ]
+            rows.sort(key=lambda row: (int(row.get('todo_id') or 0), int(row.get('sort_order') or 0), int(row.get('id') or 0)))
+            self._prepare_rows(rows, ['id', 'todo_id', 'title', 'is_done', 'sort_order'])
+            return
+
+        if normalized.startswith("delete from todo_subtasks where todo_id=%s and owner_user_id=%s"):
+            todo_id, owner_user_id = params
+            before = len(todo_subtasks)
+            self.storage['todo_subtasks'] = [
+                subtask
+                for subtask in todo_subtasks
+                if not (
+                    int(subtask.get('todo_id') or 0) == int(todo_id)
+                    and int(subtask.get('owner_user_id') or 0) == int(owner_user_id)
+                )
+            ]
+            self.rowcount = before - len(self.storage['todo_subtasks'])
+            return
+
+        if normalized.startswith("insert into todo_subtasks (todo_id, owner_user_id, title, is_done, sort_order)"):
+            todo_id, owner_user_id, title, is_done, sort_order = params
+            next_ids = self.storage.setdefault('next_ids', {})
+            new_id = next_ids.setdefault('todo_subtasks', 1)
+            next_ids['todo_subtasks'] = new_id + 1
+            self.storage.setdefault('todo_subtasks', []).append(
+                {
+                    'id': new_id,
+                    'todo_id': todo_id,
+                    'owner_user_id': owner_user_id,
+                    'title': title,
+                    'is_done': is_done,
+                    'sort_order': sort_order,
+                }
+            )
+            self.lastrowid = new_id
+            self.rowcount = 1
             return
 
         if (
@@ -1149,6 +1207,30 @@ class FakeCursor:
             self.rowcount = before - len(remaining)
             return
 
+        if normalized.startswith("insert into eintraege (class_id, beschreibung, datum, enddatum, startzeit, endzeit, typ, fach, owner_user_id, is_private, is_done)"):
+            class_id, desc, date, enddate, start, end, typ, fach, owner_user_id, is_private, is_done = params
+            next_ids = self.storage.setdefault('next_ids', {})
+            new_id = next_ids.setdefault('eintraege', 1)
+            next_ids['eintraege'] = new_id + 1
+            entry = {
+                'id': new_id,
+                'class_id': class_id,
+                'beschreibung': desc,
+                'datum': date,
+                'enddatum': enddate,
+                'startzeit': start,
+                'endzeit': end,
+                'typ': typ,
+                'fach': fach,
+                'owner_user_id': owner_user_id,
+                'is_private': is_private,
+                'is_done': is_done,
+            }
+            entries.append(entry)
+            self.lastrowid = new_id
+            self.rowcount = 1
+            return
+
         if normalized.startswith("insert into eintraege (class_id, beschreibung, datum, enddatum, startzeit, endzeit, typ, fach, owner_user_id, is_private)"):
             class_id, desc, date, enddate, start, end, typ, fach, owner_user_id, is_private = params
             next_ids = self.storage.setdefault('next_ids', {})
@@ -1166,6 +1248,7 @@ class FakeCursor:
                 'fach': fach,
                 'owner_user_id': owner_user_id,
                 'is_private': is_private,
+                'is_done': 0,
             }
             entries.append(entry)
             self.lastrowid = new_id
@@ -1197,7 +1280,7 @@ class FakeCursor:
             return
 
         if (
-            normalized.startswith("select id, owner_user_id, is_private, typ from eintraege")
+            normalized.startswith("select id, owner_user_id, is_private, typ, is_done from eintraege")
             and "owner_user_id=%s" in normalized
             and "typ='todo'" in normalized
         ):
@@ -1221,12 +1304,37 @@ class FakeCursor:
                             'owner_user_id': record.get('owner_user_id'),
                             'is_private': record.get('is_private'),
                             'typ': record.get('typ'),
+                            'is_done': record.get('is_done', 0),
                         }
                     ],
-                    ['id', 'owner_user_id', 'is_private', 'typ'],
+                    ['id', 'owner_user_id', 'is_private', 'typ', 'is_done'],
                 )
             else:
                 self._rows = []
+            return
+
+        if normalized.startswith("update eintraege set beschreibung=%s, datum=%s, enddatum=%s, startzeit=%s, endzeit=%s, fach=%s, is_done=%s"):
+            desc, date, enddate, start, end, fach, is_done, entry_id, owner_user_id = params
+            for entry in entries:
+                if (
+                    int(entry.get('id') or 0) == int(entry_id)
+                    and int(entry.get('owner_user_id') or 0) == int(owner_user_id)
+                    and int(entry.get('is_private') or 0) == 1
+                    and entry.get('typ') == 'todo'
+                ):
+                    entry.update(
+                        {
+                            'beschreibung': desc,
+                            'datum': date,
+                            'enddatum': enddate,
+                            'startzeit': start,
+                            'endzeit': end,
+                            'fach': fach,
+                            'is_done': is_done,
+                        }
+                    )
+                    self.rowcount = 1
+                    break
             return
 
         if normalized.startswith("update eintraege set beschreibung=%s, datum=%s, enddatum=%s, startzeit=%s, endzeit=%s, fach=%s"):
