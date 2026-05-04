@@ -1,15 +1,15 @@
 import { createTable, createDialog, createForm } from './admin-shared.js';
 
 const API_BASE = (() => {
-  const base = 'https://hwm-api.akzuwo.ch';
+  const base = (typeof window !== 'undefined' && typeof window.hmResolveApiBase === 'function')
+    ? window.hmResolveApiBase()
+    : 'https://hwm-api.akzuwo.ch';
   if (typeof window !== 'undefined') {
     window.__HM_RESOLVED_API_BASE__ = base;
     window.hmResolveApiBase = () => base;
   }
-  return base;
+  return String(base).replace(/\/+$/, '');
 })();
-
-const SESSION_STORAGE_KEY = 'hm.session';
 
 const TRANSLATIONS = {
   de: {
@@ -86,6 +86,7 @@ const TRANSLATIONS = {
       deleted: 'Eintrag gelöscht.',
       loadFailed: 'Daten konnten nicht geladen werden.',
       unauthorized: 'Bitte erneut anmelden.',
+      forbidden: 'Keine Berechtigung fuer den Adminbereich.',
       unknownError: 'Es ist ein unbekannter Fehler aufgetreten.',
       logsDownloaded: 'Protokolle heruntergeladen.',
       logsFailed: 'Protokolle konnten nicht heruntergeladen werden.',
@@ -183,6 +184,7 @@ const TRANSLATIONS = {
       deleted: 'Entry deleted.',
       loadFailed: 'Failed to load data.',
       unauthorized: 'Please sign in again.',
+      forbidden: 'You do not have permission to access the admin area.',
       unknownError: 'An unknown error occurred.',
       logsDownloaded: 'Logs downloaded.',
       logsFailed: 'Unable to download logs.',
@@ -280,6 +282,7 @@ const TRANSLATIONS = {
       deleted: 'Élément supprimé.',
       loadFailed: 'Impossible de charger les données.',
       unauthorized: 'Veuillez vous reconnecter.',
+      forbidden: 'Vous n’avez pas l’autorisation d’accéder à l’administration.',
       unknownError: 'Une erreur inconnue est survenue.',
       logsDownloaded: 'Journaux téléchargés.',
       logsFailed: 'Impossible de télécharger les journaux.',
@@ -377,6 +380,7 @@ const TRANSLATIONS = {
       deleted: 'Elemento eliminato.',
       loadFailed: 'Impossibile caricare i dati.',
       unauthorized: 'Effettua di nuovo l’accesso.',
+      forbidden: 'Non disponi dell’autorizzazione per l’area admin.',
       unknownError: 'Si è verificato un errore sconosciuto.',
       logsDownloaded: 'Log scaricati.',
       logsFailed: 'Impossibile scaricare i log.',
@@ -561,32 +565,6 @@ async function fetchJson(url, options = {}) {
   }
 
   return payload;
-}
-
-function loadStoredSession() {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-  try {
-    const raw = window.sessionStorage?.getItem(SESSION_STORAGE_KEY);
-    if (!raw) {
-      return null;
-    }
-    return JSON.parse(raw);
-  } catch (error) {
-    return null;
-  }
-}
-
-function isSessionAdmin(session) {
-  if (!session) {
-    return false;
-  }
-  if (typeof session.isAdmin === 'boolean') {
-    return session.isAdmin;
-  }
-  const role = String(session.role || '').toLowerCase();
-  return role === 'admin';
 }
 
 function createMessageArea() {
@@ -922,7 +900,7 @@ function buildDashboard(root) {
     pageSize: 10,
     total: 0,
     data: [],
-    authorized: true,
+    authorized: false,
     classes: [],
     classesLoaded: false,
     logs: {
@@ -975,12 +953,31 @@ function buildDashboard(root) {
     updateLogsUI();
   }
 
-  function handleUnauthorized() {
+  function handleAuthFailure(status = 401) {
     if (!state.authorized) {
+      showMessage('error', status === 403 ? t.messages.forbidden : t.messages.unauthorized);
       return;
     }
     setAuthorizationState(false);
-    showMessage('error', t.messages.unauthorized);
+    showMessage('error', status === 403 ? t.messages.forbidden : t.messages.unauthorized);
+  }
+
+  async function verifyAdminSession() {
+    try {
+      const response = await fetchJson('/api/me');
+      const role = String(response?.data?.role || '').toLowerCase();
+      if (role !== 'admin') {
+        setAuthorizationState(false);
+        showMessage('error', t.messages.forbidden);
+        return false;
+      }
+      setAuthorizationState(true);
+      return true;
+    } catch (error) {
+      setAuthorizationState(false);
+      showMessage('error', error.status === 403 ? t.messages.forbidden : t.messages.unauthorized);
+      return false;
+    }
   }
 
   function resetLogsData(resetLines = false) {
@@ -1183,7 +1180,7 @@ function buildDashboard(root) {
       showMessage();
     } catch (error) {
       if (error.status === 401 || error.status === 403) {
-        handleUnauthorized();
+        handleAuthFailure(error.status);
         return;
       }
       const message = error.message || t.messages.logsFailed;
@@ -1229,7 +1226,7 @@ function buildDashboard(root) {
       response = await fetchJson('/api/classes');
     } catch (error) {
       if (error.status === 401 || error.status === 403) {
-        handleUnauthorized();
+        handleAuthFailure(error.status);
       }
       throw error;
     }
@@ -1305,15 +1302,7 @@ function buildDashboard(root) {
     }).catch(() => {});
   }
 
-  const initialAuthorized = isSessionAdmin(loadStoredSession());
-  setAuthorizationState(initialAuthorized);
-  if (!initialAuthorized) {
-    showMessage('error', t.messages.unauthorized);
-  }
-
-  if (initialAuthorized) {
-    ensureClassesLoaded().catch(() => {});
-  }
+  setAuthorizationState(false);
 
   function buildActionCell(resourceKey, row) {
     const actions = document.createElement('div');
@@ -1412,7 +1401,7 @@ function buildDashboard(root) {
       pagination.update({ page: state.page, pageSize: state.pageSize, total: state.total });
     } catch (error) {
       if (error.status === 401 || error.status === 403) {
-        handleUnauthorized();
+        handleAuthFailure(error.status);
       } else {
         showMessage('error', error.message || t.messages.loadFailed);
       }
@@ -1479,7 +1468,7 @@ function buildDashboard(root) {
       schedulesResp = await fetchJson('/api/admin/schedules?page_size=1000');
     } catch (error) {
       if (error.status === 401 || error.status === 403) {
-        handleUnauthorized();
+        handleAuthFailure(error.status);
         return;
       }
       throw error;
@@ -1683,7 +1672,7 @@ function buildDashboard(root) {
         payload = {};
       }
       if (response.status === 401 || response.status === 403) {
-        handleUnauthorized();
+        handleAuthFailure(response.status);
         throw new Error(t.messages.unauthorized);
       }
       if (!response.ok) {
@@ -1763,7 +1752,7 @@ function buildDashboard(root) {
         });
       } catch (error) {
         if (error.status === 401 || error.status === 403) {
-          handleUnauthorized();
+          handleAuthFailure(error.status);
           throw new Error(t.messages.unauthorized);
         }
         throw error;
@@ -1808,7 +1797,7 @@ function buildDashboard(root) {
       showMessage('success', t.messages.logsDownloaded);
     } catch (error) {
       if (error.status === 401 || error.status === 403) {
-        handleUnauthorized();
+        handleAuthFailure(error.status);
       } else {
         const message = error.message || t.messages.logsFailed;
         state.logs.error = message;
@@ -1832,7 +1821,7 @@ function buildDashboard(root) {
         });
       } catch (error) {
         if (error.status === 401 || error.status === 403) {
-          handleUnauthorized();
+          handleAuthFailure(error.status);
           throw new Error(t.messages.unauthorized);
         }
         throw error;
@@ -1850,7 +1839,7 @@ function buildDashboard(root) {
       refreshAfter('delete', resourceKey);
     } catch (error) {
       if (error.status === 401 || error.status === 403) {
-        handleUnauthorized();
+        handleAuthFailure(error.status);
       } else {
         showMessage('error', error.message || t.messages.unknownError);
       }
@@ -1873,7 +1862,13 @@ function buildDashboard(root) {
   });
 
   updateNav();
-  onResourceChanged();
+  verifyAdminSession().then((authorized) => {
+    updateNav();
+    if (authorized) {
+      ensureClassesLoaded().catch(() => {});
+    }
+    onResourceChanged();
+  });
 }
 
 function initDashboard() {

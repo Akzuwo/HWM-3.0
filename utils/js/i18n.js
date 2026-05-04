@@ -32,10 +32,6 @@
           ariaLabel: 'Einstellungen öffnen',
           label: 'Einstellungen',
           language: 'Sprache',
-          theme: 'Darstellung',
-          light: 'Light Mode',
-          dark: 'Dark Mode',
-          darkUnavailable: 'Der Darkmode ist noch in Entwicklung und kann daher aktuell nicht angezeigt werden.',
         },
       },
       home: {
@@ -101,7 +97,7 @@
             'Homework Manager 2.0 liefert ein vollständig erneuertes Erlebnis mit frischen Funktionen. Das sind die Highlights des Releases.',
           items: {
             design:
-              'Rundum neu gestaltete Benutzeroberfläche mit harmonischem Dark-Theme und präziser Typografie.',
+              'Rundum neu gestaltete Benutzeroberfläche mit harmonischem Light-Theme und präziser Typografie.',
             animations: 'Flüssige Mikro-Animationen lassen Seiten und Panels noch weicher wirken.',
             events: 'Frisches „Event“-Feature für spontane Veranstaltungen, AGs und besondere Termine.',
             upcoming: 'Neue Seite für anstehende Ereignisse bringt Klarheit in die Planung.',
@@ -323,7 +319,7 @@
         back: '← Zurück zur Startseite',
         title: 'Bedienungsanleitung',
         subtitle: 'Praktische Tipps, damit jede Rolle sofort loslegen kann.',
-        note: 'Diese Anleitung folgt dem neuen Dark-Theme und den Scroll-Animationen.',
+        note: 'Diese Anleitung folgt dem neuen Light-Theme und den Scroll-Animationen.',
         teacher: {
           title: 'Für Lehrkräfte',
           summary: 'Plane Einträge und halte deine Klasse informiert.',
@@ -879,10 +875,6 @@
           ariaLabel: 'Open settings',
           label: 'Settings',
           language: 'Language',
-          theme: 'Appearance',
-          light: 'Light mode',
-          dark: 'Dark mode',
-          darkUnavailable: 'Dark mode is still in development and cannot be displayed yet.',
         },
       },
       home: {
@@ -948,7 +940,7 @@
             'Homework Manager 2.0 delivers a fully refreshed experience packed with new capabilities. Here are the headline improvements.',
           items: {
             design:
-              'Completely redesigned interface with a cohesive dark theme and refined typography.',
+              'Completely redesigned interface with a cohesive light theme and refined typography.',
             animations: 'Fluid micro-animations make every page feel smoother.',
             events: 'Brand-new “Event” feature to capture club meetings, outings, and special occasions.',
             upcoming: 'Upcoming events page delivers a clearer overview.',
@@ -991,7 +983,7 @@
       calendar: {
         pageTitle: 'Calendar',
         heading: '📅 Calendar',
-        description: 'Keep homework, exams and events in view with a cohesive dark experience.',
+        description: 'Keep homework, exams and events in view with a cohesive light experience.',
         header: {
           eyebrow: 'Planning board',
           badge: 'Calendar hub',
@@ -1142,7 +1134,7 @@
         back: '← Back to the homepage',
         title: 'User guide',
         subtitle: 'Practical tips so every role can get started right away.',
-        note: 'This guide follows the refreshed dark theme and scroll animations.',
+        note: 'This guide follows the refreshed light theme and scroll animations.',
         teacher: {
           title: 'For teachers',
           summary: 'Plan entries and keep your class informed.',
@@ -1697,10 +1689,6 @@
           ariaLabel: 'Apri impostazioni',
           label: 'Impostazioni',
           language: 'Lingua',
-          theme: 'Aspetto',
-          light: 'Modalita chiara',
-          dark: 'Modalita scura',
-          darkUnavailable: 'La modalita scura e ancora in sviluppo e non puo ancora essere mostrata.',
         },
       },
       home: {
@@ -2516,10 +2504,6 @@
           ariaLabel: 'Ouvrir les parametres',
           label: 'Parametres',
           language: 'Langue',
-          theme: 'Apparence',
-          light: 'Mode clair',
-          dark: 'Mode sombre',
-          darkUnavailable: 'Le mode sombre est encore en cours de developpement et ne peut pas encore etre affiche.',
         },
       },
       home: {

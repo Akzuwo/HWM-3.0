@@ -57,17 +57,6 @@ function GlobeIcon({ className = '' }) {
   );
 }
 
-function ThemeIcon({ className = '' }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-      <path
-        d="M11.25 3a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 11.25 3Zm0 14.25a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0V18a.75.75 0 0 1 .75-.75ZM4.47 5.53a.75.75 0 0 1 1.06 0l1.06 1.06a.75.75 0 0 1-1.06 1.06L4.47 6.59a.75.75 0 0 1 0-1.06Zm12.88 12.88a.75.75 0 0 1 1.06 0l1.06 1.06a.75.75 0 0 1-1.06 1.06l-1.06-1.06a.75.75 0 0 1 0-1.06ZM3 11.25a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 0 1.5h-1.5A.75.75 0 0 1 3 11.25Zm14.25 0a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 0 1.5H18a.75.75 0 0 1-.75-.75ZM5.53 18.41a.75.75 0 0 1 1.06-1.06l1.06 1.06a.75.75 0 1 1-1.06 1.06l-1.06-1.06Zm12.88-12.88a.75.75 0 0 1 1.06-1.06l1.06 1.06a.75.75 0 1 1-1.06 1.06l-1.06-1.06ZM12 7.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
 function getCurrentPath() {
   if (typeof window === 'undefined') {
     return '/index.html';
@@ -134,15 +123,6 @@ function SettingsDropdown({ mobile = false }) {
               </span>
               <ChevronIcon className="settings-option__chevron" direction="right" />
             </button>
-            <button type="button" className="settings-option" data-settings-open-panel="theme">
-              <span className="settings-option__icon" aria-hidden="true">
-                <ThemeIcon />
-              </span>
-              <span className="settings-option__text" data-i18n="common.settings.theme">
-                Darstellung
-              </span>
-              <ChevronIcon className="settings-option__chevron" direction="right" />
-            </button>
           </div>
 
           <div className="settings-panel settings-panel--sub" data-settings-panel="language">
@@ -165,32 +145,6 @@ function SettingsDropdown({ mobile = false }) {
             ))}
           </div>
 
-          <div className="settings-panel settings-panel--sub" data-settings-panel="theme">
-            <button type="button" className="settings-option settings-option--back" data-settings-back="">
-              <span className="settings-option__icon" aria-hidden="true">
-                <ChevronIcon direction="left" />
-              </span>
-              <span className="settings-option__text" data-i18n="common.settings.theme">
-                Darstellung
-              </span>
-            </button>
-            <button type="button" className="settings-option" data-settings-theme="light">
-              <span className="settings-option__icon" aria-hidden="true">
-                <ThemeIcon />
-              </span>
-              <span className="settings-option__text" data-i18n="common.settings.light">
-                Light Mode
-              </span>
-            </button>
-            <button type="button" className="settings-option" data-settings-theme="dark">
-              <span className="settings-option__icon" aria-hidden="true">
-                <ThemeIcon />
-              </span>
-              <span className="settings-option__text" data-i18n="common.settings.dark">
-                Dark Mode
-              </span>
-            </button>
-          </div>
         </div>
       </div>
     </div>

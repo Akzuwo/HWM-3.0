@@ -1,7 +1,7 @@
 body {
     font-family: Arial, sans-serif;
-    background: #1a1a1a;
-    color: white;
+    background: #f6f8ff;
+    color: #111827;
     text-align: center;
     margin: 0;
 }
@@ -39,7 +39,7 @@ body.is-transitioning {
     max-width: 800px;
     margin: 20px auto;
     padding: 20px;
-    background: #1e1e1e;
+    background: #ffffff;
     border-radius: 10px;
 }
 
@@ -58,18 +58,18 @@ button {
 .button {
     display: inline-block;
     padding: 0.6rem 1rem;
-    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-    border: 1px solid rgba(255,255,255,0.06);
-    color: #fff;
+    background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(232,241,255,0.58));
+    border: 1px solid rgba(177,203,238,0.68);
+    color: #111827;
     border-radius: 8px;
     font-weight: 600;
     transition: transform 150ms ease, box-shadow 150ms ease, background 180ms ease;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+    box-shadow: 0 2px 10px rgba(121,153,214,0.16);
 }
 
 .button:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+    box-shadow: 0 6px 18px rgba(121,153,214,0.22);
 }
 
 .button:active {

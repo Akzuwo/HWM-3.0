@@ -2,7 +2,6 @@
   const root = typeof global !== 'undefined' ? global : window;
   const namespace = root.hmCalendar || (root.hmCalendar = {});
 
-  const STORAGE_KEY = 'hm.session';
   const listeners = new Set();
 
   const state = {
@@ -22,19 +21,11 @@
   }
 
   function resolveSessionRole() {
-    if (typeof root === 'undefined' || typeof root.sessionStorage === 'undefined') {
-      return 'guest';
-    }
     try {
-      const rawSession = root.sessionStorage.getItem(STORAGE_KEY);
-      if (!rawSession) {
-        return 'guest';
-      }
-      const parsedSession = JSON.parse(rawSession);
-      const nextRole = parsedSession?.role || parsedSession?.user?.role;
+      const nextRole = root.hmAuth?.currentRole?.();
       return typeof nextRole === 'string' && nextRole.trim() ? nextRole : 'guest';
     } catch (error) {
-      console.warn('Unable to read session role:', error);
+      console.warn('Unable to read current auth role:', error);
       return 'guest';
     }
   }
@@ -174,16 +165,7 @@
   initialise();
 
   if (typeof root !== 'undefined' && typeof root.addEventListener === 'function') {
-    root.addEventListener('storage', (event) => {
-      if (!event) {
-        return;
-      }
-      if (event.storageArea && event.storageArea !== root.sessionStorage) {
-        return;
-      }
-      if (event.key && event.key !== STORAGE_KEY) {
-        return;
-      }
+    root.addEventListener('hm:auth-changed', () => {
       refresh();
     });
   }

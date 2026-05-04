@@ -4,14 +4,14 @@
   --space-md: 1.25rem;
   --space-lg: clamp(1.75rem, 4vw, 2.75rem);
   --space-xl: clamp(2.5rem, 5vw, 4rem);
-  --home-bg: #0d0d0d;
-  --home-surface: #121212;
-  --home-surface-alt: #161616;
-  --home-border: rgba(255, 255, 255, 0.06);
-  --home-shadow: 0 24px 48px rgba(0, 0, 0, 0.55);
-  --home-text-primary: #f5f5f5;
-  --home-text-secondary: #b0b0b0;
-  --home-text-muted: rgba(255, 255, 255, 0.55);
+  --home-bg: #f6f8ff;
+  --home-surface: #ffffff;
+  --home-surface-alt: #f8fbff;
+  --home-border: rgba(177, 203, 238, 0.62);
+  --home-shadow: 0 24px 48px rgba(121, 153, 214, 0.16);
+  --home-text-primary: #111827;
+  --home-text-secondary: #2c4259;
+  --home-text-muted: #56697f;
   --home-accent: #3b82f6;
   --home-accent-soft: rgba(59, 130, 246, 0.18);
 }

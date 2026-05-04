@@ -77,6 +77,10 @@ if HWM_DEBUG_MODE:
         "http://localhost:4174",
         "http://127.0.0.1:4174",
     ])
+    ALLOWED_CORS_ORIGIN_PATTERNS.extend([
+        "http://localhost:*",
+        "http://127.0.0.1:*",
+    ])
 
 # Environment configuration for the production deployment of the Homework Manager backend.
 # SMTP credentials are centralised in config.py to avoid duplication across modules.
@@ -226,20 +230,6 @@ def _log_user_event(event: str, user_id: Optional[int] = None, **details: object
     app.logger.info('AUDIT event=%s user_id=%s details=%s', event, user_id, encoded_details)
 
 
-def get_bearer_token() -> Optional[str]:
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header:
-        return None
-    if not auth_header.lower().startswith("bearer "):
-        return None
-    token = auth_header[7:].strip()
-    return token or None
-
-
-def _decode_bearer_token(token: str) -> Dict[str, Any]:
-    raise ValueError("Invalid or expired token")
-
-
 def _log_request_error(status: int, message: str, *, exc: Optional[BaseException] = None) -> str:
     error_id = uuid.uuid4().hex[:12]
     log_line = "Request error path=%s method=%s status=%s error_id=%s message=%s"
@@ -265,38 +255,95 @@ def _log_request_error(status: int, message: str, *, exc: Optional[BaseException
     return error_id
 
 
-def _authenticate_request() -> Tuple[Optional[Dict[str, Any]], Optional[Tuple[int, Dict[str, str], Optional[BaseException]]]]:
-    user_id = session.get('user_id')
-    role = session.get('role')
-    if user_id is not None and role is not None:
-        try:
-            user_id = int(user_id)
-        except (TypeError, ValueError):
-            pass
-        g.user = {'id': user_id, 'role': role}
-        return g.user, None
+def _sync_session_user(user: Dict[str, Any], *, conn=None) -> Dict[str, Any]:
+    user_id = int(user['id'])
+    role = str(user.get('role') or 'student').strip() or 'student'
+    class_id_value = user.get('class_id')
+    class_id: Optional[int] = None
+    class_slug: Optional[str] = None
 
+    if class_id_value is not None:
+        try:
+            class_id = int(class_id_value)
+        except (TypeError, ValueError):
+            class_id = None
+
+    if class_id is not None:
+        session['class_id'] = class_id
+        if conn is not None:
+            try:
+                class_slug = _load_class_slug(conn, class_id)
+            except mysql.connector.Error:
+                class_slug = None
+    else:
+        session.pop('class_id', None)
+
+    if class_slug:
+        session['class_slug'] = class_slug
+        try:
+            session['entry_class_id'] = _normalize_entry_class_id(class_slug)
+        except ValueError:
+            session.pop('entry_class_id', None)
+    elif class_id is None:
+        session.pop('class_slug', None)
+        session.pop('entry_class_id', None)
+
+    session['user_id'] = user_id
+    session['role'] = role
+    session['is_admin'] = role == 'admin'
+    session['is_class_admin'] = role in CLASS_ADMIN_ROLES
+
+    current_user = {
+        'id': user_id,
+        'email': user.get('email'),
+        'role': role,
+        'class_id': class_id,
+        'class_slug': session.get('class_slug'),
+    }
+    g.user = current_user
+    return current_user
+
+
+def _auth_error(status: int, message: str) -> Tuple[int, Dict[str, str], Optional[BaseException]]:
+    return status, {'status': 'error', 'message': message}, None
+
+
+def _authenticate_request() -> Tuple[Optional[Dict[str, Any]], Optional[Tuple[int, Dict[str, str], Optional[BaseException]]]]:
     if HWM_DEBUG_MODE:
         session['user_id'] = 1
         session['role'] = 'admin'
+        session['is_admin'] = True
+        session['is_class_admin'] = True
         session['class_slug'] = session.get('class_slug') or 'l23a-test'
         session['entry_class_id'] = session.get('entry_class_id') or 'l23a-test'
-        g.user = {'id': 1, 'role': 'admin', 'email': 'debug@localhost'}
+        g.user = {
+            'id': 1,
+            'role': 'admin',
+            'email': 'debug@localhost',
+            'class_id': session.get('class_id'),
+            'class_slug': session.get('class_slug'),
+        }
         return g.user, None
 
-    token = get_bearer_token()
-    if not token:
-        payload = {"error": "unauthorized", "message": "Missing bearer token"}
-        return None, (401, payload, None)
+    raw_user_id = session.get('user_id')
+    role = session.get('role')
+    if raw_user_id is None or role is None:
+        return None, _auth_error(401, 'not_authenticated')
 
     try:
-        user = _decode_bearer_token(token)
-    except Exception as exc:
-        payload = {"error": "unauthorized", "message": "Invalid or expired token"}
-        return None, (401, payload, exc)
+        user_id = int(raw_user_id)
+    except (TypeError, ValueError):
+        session.clear()
+        return None, _auth_error(401, 'not_authenticated')
 
-    g.user = user
-    return user, None
+    g.user = {
+        'id': user_id,
+        'role': str(role),
+        'email': session.get('email'),
+        'class_id': _get_session_class_id(),
+        'class_slug': session.get('class_slug'),
+    }
+    return g.user, None
 
 def _resolve_cors_origin() -> Optional[str]:
     origin = request.headers.get("Origin")
@@ -318,7 +365,7 @@ CORS(
     supports_credentials=True,
     resources={r"/*": {"origins": ALLOWED_CORS_ORIGINS + ALLOWED_CORS_ORIGIN_PATTERNS}},
     methods=["GET","HEAD","POST","OPTIONS","PUT","DELETE"],
-    allow_headers=["Content-Type", "Authorization", "X-Role"]
+    allow_headers=["Content-Type", "X-Role"]
 )
 # ---------- DATABASE POOL ----------
 if HWM_DEBUG_MODE:
@@ -773,8 +820,8 @@ def require_role(*roles):
             else:
                 allowed = current_role is not None
             if not allowed:
-                _log_request_error(403, 'Forbidden')
-                return jsonify(status='error', message='Forbidden'), 403
+                _log_request_error(403, 'forbidden')
+                return jsonify(status='error', message='forbidden'), 403
             return fn(*args, **kwargs)
 
         return wrapper
@@ -858,9 +905,9 @@ def require_admin(fn):
             status, payload, exc = auth_error
             _log_request_error(status, payload.get('message', 'unauthorized'), exc=exc)
             return jsonify(payload), status
-        if not session.get('is_admin'):
-            _log_request_error(403, 'Forbidden')
-            return jsonify(status='error', message='Forbidden'), 403
+        if session.get('role') != 'admin':
+            _log_request_error(403, 'forbidden')
+            return jsonify(status='error', message='forbidden'), 403
         return fn(*args, **kwargs)
 
     return wrapper
@@ -878,8 +925,8 @@ def require_class_admin(fn):
             return jsonify(payload), status
         role = session.get('role')
         if role not in CLASS_ADMIN_ROLES:
-            _log_request_error(403, 'Forbidden')
-            return jsonify(status='error', message='Forbidden'), 403
+            _log_request_error(403, 'forbidden')
+            return jsonify(status='error', message='forbidden'), 403
         return fn(*args, **kwargs)
 
     return wrapper
@@ -897,8 +944,8 @@ def require_entry_manager(fn):
             return jsonify(payload), status
         role = session.get('role')
         if role not in ENTRY_MANAGER_ROLES:
-            _log_request_error(403, 'Forbidden')
-            return jsonify(status='error', message='Forbidden'), 403
+            _log_request_error(403, 'forbidden')
+            return jsonify(status='error', message='forbidden'), 403
         return fn(*args, **kwargs)
 
     return wrapper
@@ -3418,35 +3465,8 @@ def auth_login():
             return jsonify(status='error', message='email_not_verified'), 403
 
         session['user_id'] = int(user['id'])
-        role = (user.get('role') or 'student').strip() or 'student'
-        session['role'] = role
-        class_id_value = user.get('class_id')
-        class_slug = None
-        if class_id_value is None:
-            session.pop('class_id', None)
-        else:
-            try:
-                class_id_int = int(class_id_value)
-            except (TypeError, ValueError):
-                session.pop('class_id', None)
-            else:
-                session['class_id'] = class_id_int
-                try:
-                    class_slug = _load_class_slug(conn, class_id_int)
-                except mysql.connector.Error:
-                    class_slug = None
-        if class_slug:
-            session['class_slug'] = class_slug
-            try:
-                session['entry_class_id'] = _normalize_entry_class_id(class_slug)
-            except ValueError:
-                session.pop('entry_class_id', None)
-        else:
-            session.pop('class_slug', None)
-            session.pop('entry_class_id', None)
-        is_admin = role == 'admin'
-        session['is_admin'] = is_admin
-        session['is_class_admin'] = role in CLASS_ADMIN_ROLES
+        current_user = _sync_session_user(user, conn=conn)
+        role = current_user['role']
 
         try:
             _mark_user_login(conn, int(user['id']))
@@ -5026,8 +5046,8 @@ def current_user_profile():
     try:
         user_id = int(user_id)
     except (TypeError, ValueError):
-        _log_request_error(401, 'Invalid or expired token')
-        return jsonify(error='unauthorized', message='Invalid or expired token'), 401
+        _log_request_error(401, 'not_authenticated')
+        return jsonify(status='error', message='not_authenticated'), 401
 
     try:
         conn = get_connection()
@@ -5041,7 +5061,7 @@ def current_user_profile():
             if request.method == 'GET':
                 cursor.execute(
                     """
-                    SELECT u.id, u.email, u.role, u.class_id, u.created_at, u.updated_at,
+                    SELECT u.id, u.email, u.role, u.class_id, u.is_active, u.email_verified_at, u.created_at, u.updated_at,
                            c.slug AS class_slug, c.title AS class_title
                     FROM users u
                     LEFT JOIN classes c ON c.id = u.class_id
@@ -5052,7 +5072,15 @@ def current_user_profile():
                 )
                 row = cursor.fetchone()
                 if not row:
-                    return jsonify(status='error', message='user_not_found'), 404
+                    session.clear()
+                    return jsonify(status='error', message='not_authenticated'), 401
+                try:
+                    if row.get('is_active') is not None and int(row['is_active']) == 0:
+                        session.clear()
+                        return jsonify(status='error', message='not_authenticated'), 401
+                except (TypeError, ValueError):
+                    pass
+                _sync_session_user(row, conn=conn)
                 # compute account age in days
                 created_at = row.get('created_at')
                 account_age_days = None
@@ -5429,7 +5457,7 @@ def _cors_preflight():
     resp.headers.update({
         'Access-Control-Allow-Origin': origin,
         'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Role',
+        'Access-Control-Allow-Headers': 'Content-Type, X-Role',
         'Access-Control-Allow-Credentials': 'true',
         'Vary': 'Origin',
     })

@@ -1,3 +1,15 @@
 node_modules/
 dist/
 .vite/
+test-results/
+__pycache__/
+*.py[cod]
+*.log
+*.tmp
+*.bak
+*.old
+.env
+.env.*
+!.env.example
+calendar-*-debug-*.png
+calendar-hwm3-*.png

@@ -143,6 +143,7 @@ const AUTH_API = {
     login: `${API_BASE}/api/auth/login`,
     register: `${API_BASE}/api/auth/register`,
     logout: `${API_BASE}/api/auth/logout`,
+    me: `${API_BASE}/api/me`,
     resend: `${API_BASE}/api/auth/resend`,
     verify: `${API_BASE}/api/auth/verify`,
     passwordReset: `${API_BASE}/api/auth/password-reset`
@@ -249,6 +250,17 @@ function scheduleCooldownReset(action) {
 }
 
 const SESSION_STORAGE_KEY = 'hm.session';
+const LEGACY_AUTH_STORAGE_KEYS = [
+    SESSION_STORAGE_KEY,
+    'token',
+    'authToken',
+    'accessToken',
+    'jwt',
+    'role',
+    'userRole',
+    'hm.role',
+    'hm.userRole'
+];
 
 const DEFAULT_SESSION = {
     role: 'guest',
@@ -260,7 +272,9 @@ const DEFAULT_SESSION = {
     canCreatePersonalTodos: false
 };
 
-let sessionState = normalizeSession(loadStoredSession());
+clearLegacyAuthStorage();
+
+let sessionState = normalizeSession();
 let lastAuthEmail = sessionState.email || '';
 let currentVerificationEmail = '';
 let authOverlayInitialized = false;
@@ -294,53 +308,45 @@ function normalizeSession(data = {}) {
     };
 }
 
-function loadStoredSession() {
-    if (typeof window !== 'undefined' && window.__HM_API_DEBUG_MODE__) {
-        return {
-            role: 'admin',
-            email: 'debug@localhost',
-            emailVerified: true
-        };
+function clearLegacyAuthStorage() {
+    if (typeof window === 'undefined') {
+        return;
     }
-    try {
-        const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
-        if (!raw) {
-            return { ...DEFAULT_SESSION };
+    LEGACY_AUTH_STORAGE_KEYS.forEach((key) => {
+        try {
+            window.localStorage?.removeItem(key);
+        } catch (error) {
+            /* ignore storage errors */
         }
-        const parsed = JSON.parse(raw);
-        return { ...DEFAULT_SESSION, ...parsed };
-    } catch (error) {
-        return { ...DEFAULT_SESSION };
-    }
+        try {
+            window.sessionStorage?.removeItem(key);
+        } catch (error) {
+            /* ignore storage errors */
+        }
+    });
 }
 
-function persistSession() {
-    sessionStorage.setItem(
-        SESSION_STORAGE_KEY,
-        JSON.stringify({
-            role: sessionState.role,
-            email: sessionState.email,
-            emailVerified: sessionState.emailVerified
-        })
-    );
-}
-
-function setAuthenticatedSession(role, email) {
+function setAuthenticatedSession(role, email, options = {}) {
     sessionState = normalizeSession({
         role,
         email,
         emailVerified: true
     });
     lastAuthEmail = email;
-    hmClassStorage.clear();
-    persistSession();
+    if (options.clearClass !== false) {
+        hmClassStorage.clear();
+    }
     updateAuthUI();
+}
+
+function setSessionFromUser(user = {}) {
+    setAuthenticatedSession(user.role || 'student', user.email || '', { clearClass: false });
 }
 
 function clearSessionState() {
     sessionState = { ...DEFAULT_SESSION };
     lastAuthEmail = '';
-    sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    clearLegacyAuthStorage();
     hmClassStorage.clear();
     updateAuthUI();
 }
@@ -373,6 +379,46 @@ function getAuthSnapshot() {
     };
 }
 
+function resolveApiUrl(path) {
+    if (/^https?:\/\//i.test(path)) {
+        return path;
+    }
+    const suffix = String(path || '').startsWith('/') ? path : `/${path}`;
+    return `${API_BASE}${suffix}`;
+}
+
+async function hmApiFetch(path, options = {}) {
+    const headers = { ...(options.headers || {}) };
+    const init = {
+        ...options,
+        credentials: 'include',
+        headers
+    };
+    if (init.body && !(init.body instanceof FormData) && !headers['Content-Type']) {
+        headers['Content-Type'] = 'application/json';
+    }
+
+    const response = await fetch(resolveApiUrl(path), init);
+    if (response.status === 401) {
+        clearSessionState();
+    }
+    return response;
+}
+
+async function refreshCurrentUser() {
+    const response = await hmApiFetch(AUTH_API.me, { method: 'GET' });
+    const payload = await response.json().catch(() => ({}));
+    if (response.ok && payload?.status === 'ok' && payload.data) {
+        setSessionFromUser(payload.data);
+        return payload.data;
+    }
+    if (response.status === 401) {
+        clearSessionState();
+        return null;
+    }
+    throw new Error(payload?.message || `Unable to load current user (${response.status})`);
+}
+
 function dispatchAuthChange(force = false) {
     const snapshot = getAuthSnapshot();
     if (
@@ -395,6 +441,8 @@ function dispatchAuthChange(force = false) {
     bridge.isAuthenticated = () => isAuthenticated();
     bridge.currentEmail = () => sessionState.email || '';
     bridge.currentRole = () => sessionState.role || 'guest';
+    bridge.refresh = refreshCurrentUser;
+    bridge.apiFetch = hmApiFetch;
     window.hmAuth = bridge;
 
     if (typeof window.dispatchEvent === 'function') {
@@ -1789,8 +1837,14 @@ async function login(form) {
             return;
         }
 
-        const role = data && data.role ? data.role : 'student';
-        setAuthenticatedSession(role, email);
+        try {
+            hmClassStorage.clear();
+            await refreshCurrentUser();
+        } catch (error) {
+            console.error('Could not refresh current user after login', error);
+            setLoginFeedback(LOGIN_TEXT.genericError, 'error', targetForm);
+            return;
+        }
         closeAuthOverlay();
 
         if (window.location.pathname.toLowerCase().endsWith('login.html')) {
@@ -1849,6 +1903,7 @@ async function verifyCode(form) {
         const response = await fetch(AUTH_API.verify, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ email, code: normalizedCode })
         });
         const data = await response.json().catch(() => ({}));
@@ -1924,6 +1979,7 @@ async function resendVerification(form) {
         const response = await fetch(AUTH_API.resend, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ email })
         });
         if (response.ok) {
@@ -2158,7 +2214,6 @@ function initSettingsDropdown() {
         return map;
     }, {});
     const LOCALE_STORAGE_KEY = 'hm.locale';
-    const THEME_STORAGE_KEY = 'hm.theme';
     const dropdowns = Array.from(document.querySelectorAll('[data-settings]'));
     if (!dropdowns.length) {
         return;
@@ -2198,24 +2253,6 @@ function initSettingsDropdown() {
         const fromI18n = window.hmI18n?.getLocale?.();
         const candidate = normalizeLanguage(fromI18n || getStoredLocale() || document.documentElement.getAttribute('lang'));
         return candidate || 'de';
-    };
-
-    const getCurrentTheme = () => {
-        try {
-            const storedTheme = window.localStorage?.getItem(THEME_STORAGE_KEY);
-            return storedTheme === 'dark' ? 'light' : 'light';
-        } catch (error) {
-            return 'light';
-        }
-    };
-
-    const setStoredTheme = (value) => {
-        try {
-            if (!window.localStorage) return;
-            window.localStorage.setItem(THEME_STORAGE_KEY, value);
-        } catch (error) {
-            /* ignore storage errors */
-        }
     };
 
     const updateButtonLabel = (button, langCode) => {
@@ -2278,7 +2315,7 @@ function initSettingsDropdown() {
         }
     };
 
-    const syncDropdownState = (dropdown, currentLang, currentTheme) => {
+    const syncDropdownState = (dropdown, currentLang) => {
         dropdown.querySelectorAll('[data-settings-lang]').forEach((item) => {
             const lang = item.dataset.settingsLang;
             const data = langMap[lang] || langMap.en;
@@ -2299,18 +2336,6 @@ function initSettingsDropdown() {
             }
         });
 
-        dropdown.querySelectorAll('[data-settings-theme]').forEach((item) => {
-            const theme = item.dataset.settingsTheme;
-            item.setAttribute('role', 'menuitem');
-            item.setAttribute('tabindex', '-1');
-            if (theme === currentTheme) {
-                item.setAttribute('aria-current', 'true');
-                item.dataset.active = 'true';
-            } else {
-                item.removeAttribute('aria-current');
-                delete item.dataset.active;
-            }
-        });
     };
 
     dropdowns.forEach((dropdown, index) => {
@@ -2329,7 +2354,6 @@ function initSettingsDropdown() {
 
         const mainItems = Array.from(dropdown.querySelectorAll('[data-settings-panel="main"] .settings-option'));
         const languageItems = Array.from(dropdown.querySelectorAll('[data-settings-lang]'));
-        const themeItems = Array.from(dropdown.querySelectorAll('[data-settings-theme]'));
         const backButtons = Array.from(dropdown.querySelectorAll('[data-settings-back]'));
 
         const focusCollection = (collection, indexToFocus = 0) => {
@@ -2365,23 +2389,9 @@ function initSettingsDropdown() {
                 if (toggle) {
                     updateButtonLabel(toggle, lang);
                 }
-                syncDropdownState(dropdownEl, lang, getCurrentTheme());
+                syncDropdownState(dropdownEl, lang);
                 setActivePanel(dropdownEl, 'main');
             });
-            closeDropdown(dropdown);
-        };
-
-        const selectTheme = (theme) => {
-            if (theme === 'dark') {
-                const message = window.hmI18n?.get?.('common.settings.darkUnavailable')
-                    || 'Der Darkmode ist noch in Entwicklung und kann daher aktuell nicht angezeigt werden.';
-                window.hmToast?.info?.(message, { timeout: 4500 });
-                syncDropdownState(dropdown, getCurrentLanguage(), getCurrentTheme());
-                return;
-            }
-
-            setStoredTheme('light');
-            syncDropdownState(dropdown, getCurrentLanguage(), 'light');
             closeDropdown(dropdown);
         };
 
@@ -2392,7 +2402,7 @@ function initSettingsDropdown() {
             if (!isOpen) {
                 openDropdown(dropdown);
                 const current = getCurrentLanguage();
-                syncDropdownState(dropdown, current, getCurrentTheme());
+                syncDropdownState(dropdown, current);
                 setActivePanel(dropdown, 'main');
                 focusCollection(mainItems, 0);
             } else {
@@ -2409,7 +2419,7 @@ function initSettingsDropdown() {
                     if (!dropdown.classList.contains('is-open')) {
                         closeAll(dropdown);
                         openDropdown(dropdown);
-                        syncDropdownState(dropdown, getCurrentLanguage(), getCurrentTheme());
+                        syncDropdownState(dropdown, getCurrentLanguage());
                         setActivePanel(dropdown, 'main');
                     }
                     focusCollection(mainItems, 0);
@@ -2420,7 +2430,7 @@ function initSettingsDropdown() {
                     if (!dropdown.classList.contains('is-open')) {
                         closeAll(dropdown);
                         openDropdown(dropdown);
-                        syncDropdownState(dropdown, getCurrentLanguage(), getCurrentTheme());
+                        syncDropdownState(dropdown, getCurrentLanguage());
                         setActivePanel(dropdown, 'main');
                     }
                     focusCollection(mainItems, Math.max(0, mainItems.length - 1));
@@ -2462,16 +2472,14 @@ function initSettingsDropdown() {
                         event.preventDefault();
                         if (item.dataset.settingsOpenPanel) {
                             setActivePanel(dropdown, item.dataset.settingsOpenPanel);
-                            const targetCollection = item.dataset.settingsOpenPanel === 'language' ? languageItems : themeItems;
-                            focusCollection(targetCollection, 0);
+                            focusCollection(languageItems, 0);
                         }
                         break;
                     case 'ArrowRight':
                         if (item.dataset.settingsOpenPanel) {
                             event.preventDefault();
                             setActivePanel(dropdown, item.dataset.settingsOpenPanel);
-                            const targetCollection = item.dataset.settingsOpenPanel === 'language' ? languageItems : themeItems;
-                            focusCollection(targetCollection, 0);
+                            focusCollection(languageItems, 0);
                         }
                         break;
                     case 'Escape':
@@ -2487,8 +2495,7 @@ function initSettingsDropdown() {
             item.addEventListener('click', () => {
                 if (item.dataset.settingsOpenPanel) {
                     setActivePanel(dropdown, item.dataset.settingsOpenPanel);
-                    const targetCollection = item.dataset.settingsOpenPanel === 'language' ? languageItems : themeItems;
-                    focusCollection(targetCollection, 0);
+                    focusCollection(languageItems, 0);
                 }
             });
         });
@@ -2533,7 +2540,6 @@ function initSettingsDropdown() {
         };
 
         bindSubmenuCollection(languageItems, (item) => selectLanguage(item.dataset.settingsLang));
-        bindSubmenuCollection(themeItems, (item) => selectTheme(item.dataset.settingsTheme));
 
         backButtons.forEach((item) => {
             item.setAttribute('role', 'menuitem');
@@ -2553,7 +2559,7 @@ function initSettingsDropdown() {
 
         const initialLang = getCurrentLanguage();
         updateButtonLabel(button, initialLang);
-        syncDropdownState(dropdown, initialLang, getCurrentTheme());
+        syncDropdownState(dropdown, initialLang);
         setActivePanel(dropdown, 'main');
     });
 
@@ -2575,14 +2581,22 @@ function initSettingsDropdown() {
     });
 }
 
-function checkLogin() {
+async function checkLogin() {
     const pathname = window.location.pathname.toLowerCase();
     const isLoginPage = pathname.endsWith('login.html');
 
     initAuthOverlay();
     bindAuthForms();
-    updateAuthUI();
     setupAuthButton();
+
+    try {
+        await refreshCurrentUser();
+    } catch (error) {
+        console.error('Unable to refresh current user', error);
+        clearSessionState();
+    }
+
+    updateAuthUI();
 
     if (isLoginPage && isAuthenticated()) {
         window.location.replace(AUTH_PATHS.home);
@@ -2603,7 +2617,7 @@ async function openCalendar() {
     try {
         clearContent();
 
-        const res = await fetch(`${API_BASE}/entries`);
+        const res = await hmApiFetch('/entries');
         if (!res.ok) {
             throw new Error(`API error (${res.status})`);
         }
@@ -2651,7 +2665,7 @@ let fachInterval;
 async function loadCurrentSubject() {
   clearContent();
   async function update() {
-    const res = await fetch(`${API_BASE}/aktuelles_fach`);
+    const res = await hmApiFetch('/aktuelles_fach');
     const data = await res.json();
     document.getElementById('content').innerHTML = `
       <h2>Current Subject: ${data.fach}</h2>
@@ -2666,7 +2680,7 @@ async function loadCurrentSubject() {
 
 /** EINMALIGE ABFRAGE (ohne Intervall) **/
 async function aktuellesFachLaden() {
-  const res = await fetch(`${API_BASE}/aktuelles_fach`);
+  const res = await hmApiFetch('/aktuelles_fach');
   const data = await res.json();
   document.getElementById('fachInfo').innerHTML = `
     <p><strong>Subject:</strong> ${data.fach}</p>

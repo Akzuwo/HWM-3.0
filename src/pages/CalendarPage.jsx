@@ -76,123 +76,144 @@ export function CalendarPage() {
             </span>
             <div className="calendar-weekstrip__list" data-week-strip-list="" role="listbox"></div>
           </div>
-          <div className="calendar-controls" data-calendar-controls="">
-            <div
-              className="calendar-month-nav"
-              role="toolbar"
-              aria-label="Month navigation"
-              data-i18n-attr="aria-label:calendar.monthNav.label"
-            >
-              <button
-                type="button"
-                className="calendar-month-nav__button calendar-month-nav__button--prev"
-                data-calendar-nav="prev"
-                aria-label="Previous month"
-                data-i18n-attr="aria-label:calendar.monthNav.previous"
-              >
-                <span aria-hidden="true">◀</span>
-                <span className="visually-hidden" data-i18n="calendar.monthNav.previous">
-                  Previous month
+
+          <div className="calendar-workspace">
+            <aside className="calendar-sidebar" aria-label="Calendar controls">
+              <div className="calendar-sidebar__header">
+                <span className="calendar-sidebar__eyebrow" data-i18n="calendar.header.badge">
+                  Calendar hub
                 </span>
-              </button>
-              <div
-                className="calendar-view-switch"
-                role="group"
-                aria-label="Select calendar view"
-                data-i18n-attr="aria-label:calendar.viewSwitch.label"
-              >
-                <button type="button" className="calendar-view-switch__button" data-calendar-view="dayGridMonth" aria-pressed="false" data-i18n="calendar.views.month">
-                  Month
-                </button>
-                <button type="button" className="calendar-view-switch__button" data-calendar-view="timeGridWeek" aria-pressed="false" data-i18n="calendar.views.week">
-                  Week
-                </button>
-                <button type="button" className="calendar-view-switch__button" data-calendar-view="timeGridDay" aria-pressed="false" data-i18n="calendar.views.day">
-                  Day
+                <h1 className="calendar-sidebar__title" data-i18n="calendar.heading">
+                  📅 Calendar
+                </h1>
+                <span className="calendar-month-nav__label" data-calendar-month-label="" data-i18n="calendar.monthNav.current">
+                  Current month
+                </span>
+              </div>
+
+              <div className="calendar-controls" data-calendar-controls="">
+                <div
+                  className="calendar-month-nav"
+                  role="toolbar"
+                  aria-label="Month navigation"
+                  data-i18n-attr="aria-label:calendar.monthNav.label"
+                >
+                  <button
+                    type="button"
+                    className="calendar-month-nav__button calendar-month-nav__button--prev"
+                    data-calendar-nav="prev"
+                    aria-label="Previous month"
+                    data-i18n-attr="aria-label:calendar.monthNav.previous"
+                  >
+                    <span aria-hidden="true">◀</span>
+                    <span className="visually-hidden" data-i18n="calendar.monthNav.previous">
+                      Previous month
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="calendar-month-nav__button calendar-month-nav__button--today"
+                    data-calendar-nav="today"
+                    aria-label="Go to today"
+                    data-i18n-attr="aria-label:calendar.monthNav.today"
+                  >
+                    <span data-i18n="calendar.monthNav.today">Today</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="calendar-month-nav__button calendar-month-nav__button--next"
+                    data-calendar-nav="next"
+                    aria-label="Next month"
+                    data-i18n-attr="aria-label:calendar.monthNav.next"
+                  >
+                    <span className="visually-hidden" data-i18n="calendar.monthNav.next">
+                      Next month
+                    </span>
+                    <span aria-hidden="true">▶</span>
+                  </button>
+                </div>
+
+                <div
+                  className="calendar-view-switch"
+                  role="group"
+                  aria-label="Select calendar view"
+                  data-i18n-attr="aria-label:calendar.viewSwitch.label"
+                >
+                  <button type="button" className="calendar-view-switch__button" data-calendar-view="dayGridMonth" aria-pressed="false" data-i18n="calendar.views.month">
+                    Month
+                  </button>
+                  <button type="button" className="calendar-view-switch__button" data-calendar-view="timeGridWeek" aria-pressed="false" data-i18n="calendar.views.week">
+                    Week
+                  </button>
+                  <button type="button" className="calendar-view-switch__button" data-calendar-view="timeGridDay" aria-pressed="false" data-i18n="calendar.views.day">
+                    Day
+                  </button>
+                </div>
+
+                <div className="calendar-class-selector" data-class-selector="" hidden>
+                  <label htmlFor="calendar-class-select" data-i18n="calendar.classSelector.label">
+                    Class
+                  </label>
+                  <select id="calendar-class-select" data-class-select="" defaultValue="">
+                    <option value="" disabled data-i18n="calendar.classSelector.placeholder">
+                      Select class
+                    </option>
+                  </select>
+                </div>
+
+                <button type="button" className="calendar-filter-button" data-calendar-filter-toggle="" data-i18n="calendar.filters.button">
+                  Filter
                 </button>
               </div>
-              <button
-                type="button"
-                className="calendar-month-nav__button calendar-month-nav__button--next"
-                data-calendar-nav="next"
-                aria-label="Next month"
-                data-i18n-attr="aria-label:calendar.monthNav.next"
-              >
-                <span className="visually-hidden" data-i18n="calendar.monthNav.next">
-                  Next month
-                </span>
-                <span aria-hidden="true">▶</span>
-              </button>
-              <button
-                type="button"
-                className="calendar-month-nav__button calendar-month-nav__button--today"
-                data-calendar-nav="today"
-                aria-label="Go to today"
-                data-i18n-attr="aria-label:calendar.monthNav.today"
-              >
-                <span data-i18n="calendar.monthNav.today">Today</span>
-              </button>
-            </div>
-            <div className="calendar-class-selector" data-class-selector="" hidden>
-              <label htmlFor="calendar-class-select" data-i18n="calendar.classSelector.label">
-                Class
-              </label>
-              <select id="calendar-class-select" data-class-select="" defaultValue="">
-                <option value="" disabled data-i18n="calendar.classSelector.placeholder">
-                  Select class
-                </option>
-              </select>
-            </div>
-            <button type="button" className="calendar-filter-button" data-calendar-filter-toggle="" data-i18n="calendar.filters.button">
-              Filter
-            </button>
-            <span className="calendar-month-nav__label" data-calendar-month-label="" data-i18n="calendar.monthNav.current">
-              Current month
-            </span>
-          </div>
-          <div className="calendar-shell__legend" role="presentation">
-            <div className="calendar-legend" role="list">
-              {[
-                ['hausaufgabe', 'calendar.legend.homework', 'Homework'],
-                ['pruefung', 'calendar.legend.exam', 'Exam'],
-                ['event', 'calendar.legend.event', 'Event'],
-                ['ferien', 'calendar.legend.holiday', 'Holidays & Breaks'],
-                ['todo', 'calendar.legend.todo', 'ToDo']
-              ].map(([type, key, label]) => (
-                <span key={type} className="calendar-legend__item" data-type={type} role="listitem">
-                  <span className="calendar-legend__dot" aria-hidden="true"></span>
-                  <span data-i18n={key}>{label}</span>
-                </span>
-              ))}
+
+              <div className="calendar-shell__legend" role="presentation">
+                <div className="calendar-legend" role="list">
+                  {[
+                    ['hausaufgabe', 'calendar.legend.homework', 'Homework'],
+                    ['pruefung', 'calendar.legend.exam', 'Exam'],
+                    ['event', 'calendar.legend.event', 'Event'],
+                    ['ferien', 'calendar.legend.holiday', 'Holidays & Breaks'],
+                    ['todo', 'calendar.legend.todo', 'ToDo']
+                  ].map(([type, key, label]) => (
+                    <span key={type} className="calendar-legend__item" data-type={type} role="listitem">
+                      <span className="calendar-legend__dot" aria-hidden="true"></span>
+                      <span data-i18n={key}>{label}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <footer className="calendar-action-bar" data-i18n-attr="aria-label:calendar.actionBar.label" aria-label="Calendar actions">
+                <div className="calendar-action-bar__inner">
+                  <button type="button" className="calendar-cta calendar-cta--primary" data-action="create">
+                    <span className="calendar-cta__label" data-i18n="calendar.actions.create.label">
+                      New entry
+                    </span>
+                  </button>
+                  <button type="button" className="calendar-cta calendar-cta--secondary" data-action="export">
+                    <span className="calendar-cta__label" data-i18n="calendar.actions.export.label">
+                      Export
+                    </span>
+                  </button>
+                  <button type="button" className="calendar-cta calendar-cta--secondary" data-action="back">
+                    <span className="calendar-cta__label" data-i18n="calendar.actions.back.label">
+                      Back to overview
+                    </span>
+                  </button>
+                </div>
+              </footer>
+            </aside>
+
+            <div className="calendar-board">
+              <div id="calendar" data-state="loading" role="status" aria-live="polite" aria-busy="true" data-i18n="calendar.status.loading">
+                Loading calendar ...
+              </div>
+              <div className="calendar-agenda-view" data-calendar-agenda=""></div>
+              <div className="calendar-month-mobile" data-calendar-month=""></div>
             </div>
           </div>
-          <div id="calendar" data-state="loading" role="status" aria-live="polite" aria-busy="true" data-i18n="calendar.status.loading">
-            Loading calendar ...
-          </div>
-          <div className="calendar-agenda-view" data-calendar-agenda=""></div>
-          <div className="calendar-month-mobile" data-calendar-month=""></div>
         </section>
       </main>
-
-      <footer className="calendar-action-bar" data-i18n-attr="aria-label:calendar.actionBar.label" aria-label="Calendar actions">
-        <div className="calendar-action-bar__inner">
-          <button type="button" className="calendar-cta calendar-cta--primary" data-action="create">
-            <span className="calendar-cta__label" data-i18n="calendar.actions.create.label">
-              New entry
-            </span>
-          </button>
-          <button type="button" className="calendar-cta calendar-cta--secondary" data-action="export">
-            <span className="calendar-cta__label" data-i18n="calendar.actions.export.label">
-              Export
-            </span>
-          </button>
-          <button type="button" className="calendar-cta calendar-cta--secondary" data-action="back">
-            <span className="calendar-cta__label" data-i18n="calendar.actions.back.label">
-              Back to overview
-            </span>
-          </button>
-        </div>
-      </footer>
 
       <div id="fc-modal-overlay" className="hm-modal-overlay" onClick={() => window.closeModal?.()}>
         <div className="hm-modal" role="dialog" aria-modal="true" tabIndex="-1" onClick={(event) => event.stopPropagation()}>

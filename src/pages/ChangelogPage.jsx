@@ -30,7 +30,7 @@ export function ChangelogPage() {
             </p>
             <ul>
               <li data-i18n="changelog.release.items.design">
-                Completely redesigned interface with a cohesive dark theme and refined typography.
+                Completely redesigned interface with a cohesive light theme and refined typography.
               </li>
               <li data-i18n="changelog.release.items.animations">
                 Fluid micro-animations make every page feel smoother.

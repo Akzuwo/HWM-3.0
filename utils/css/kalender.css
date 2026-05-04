@@ -1,18 +1,18 @@
 /* -------------------------------------------------------------------------- */
-/*  Kalender – Dark Theme Override                                            */
+/*  Kalender – Light theme tokens                                             */
 /* -------------------------------------------------------------------------- */
 
 :root {
-  color-scheme: dark;
-  --bg: #0c0f18;
-  --fg: #f4f6fb;
-  --fg-strong: #ffffff;
-  --muted: rgba(244, 246, 251, 0.68);
-  --muted-strong: rgba(244, 246, 251, 0.82);
-  --surface-0: #10141f;
-  --surface-1: #151b28;
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
+  color-scheme: light;
+  --bg: #f6f8ff;
+  --fg: #111827;
+  --fg-strong: #0f172a;
+  --muted: #4a5a6d;
+  --muted-strong: #33465c;
+  --surface-0: #ffffff;
+  --surface-1: #f8fbff;
+  --border: rgba(177, 203, 238, 0.62);
+  --border-strong: rgba(135, 168, 218, 0.72);
   --accent: #5b8def;
   --accent-soft: rgba(91, 141, 239, 0.18);
   --accent-strong: #7ca3ff;
@@ -21,15 +21,15 @@
   --danger-strong: #ff6b68;
   --success: #34d399;
   --warning: #f59e0b;
-  --select-bg-default: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02));
-  --select-border-default: rgba(255, 255, 255, 0.26);
-  --select-hover-bg-default: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.06));
+  --select-bg-default: linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(232, 241, 255, 0.54));
+  --select-border-default: rgba(177, 203, 238, 0.72);
+  --select-hover-bg-default: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(225, 237, 255, 0.72));
   --select-hover-border-default: rgba(144, 181, 255, 0.78);
   --select-ring-default:
     0 0 0 1px rgba(7, 10, 18, 0.85),
     0 0 0 4px rgba(144, 181, 255, 0.32);
   --select-arrow-default: rgba(244, 246, 251, 0.82);
-  --select-option-bg: #111726;
+  --select-option-bg: #ffffff;
   --select-option-text: var(--fg);
   --select-type-bg: linear-gradient(135deg, rgba(91, 141, 239, 0.38), rgba(91, 141, 239, 0.12));
   --select-type-hover-bg: linear-gradient(135deg, rgba(124, 163, 255, 0.55), rgba(91, 141, 239, 0.2));
@@ -39,9 +39,9 @@
     0 0 0 1px rgba(28, 46, 83, 0.95),
     0 0 0 4px rgba(124, 163, 255, 0.38);
   --select-type-arrow: rgba(214, 227, 255, 0.96);
-  --select-type-text: #f5f7ff;
-  --select-type-option-bg: #152442;
-  --select-type-option-text: #f4f8ff;
+  --select-type-text: #10254f;
+  --select-type-option-bg: #ffffff;
+  --select-type-option-text: #10254f;
   --select-subject-bg: linear-gradient(135deg, rgba(52, 211, 153, 0.34), rgba(52, 211, 153, 0.1));
   --select-subject-hover-bg: linear-gradient(135deg, rgba(110, 239, 194, 0.52), rgba(52, 211, 153, 0.14));
   --select-subject-border: rgba(52, 211, 153, 0.78);
@@ -50,9 +50,9 @@
     0 0 0 1px rgba(15, 61, 49, 0.92),
     0 0 0 4px rgba(52, 211, 153, 0.35);
   --select-subject-arrow: rgba(212, 250, 233, 0.96);
-  --select-subject-text: #f4fffa;
-  --select-subject-option-bg: #0f3226;
-  --select-subject-option-text: #f2fff9;
+  --select-subject-text: #164e38;
+  --select-subject-option-bg: #ffffff;
+  --select-subject-option-text: #164e38;
   --select-class-bg: linear-gradient(135deg, rgba(181, 126, 255, 0.3), rgba(91, 141, 239, 0.08));
   --select-class-hover-bg: linear-gradient(135deg, rgba(181, 126, 255, 0.46), rgba(91, 141, 239, 0.16));
   --select-class-border: rgba(181, 126, 255, 0.78);
@@ -61,28 +61,28 @@
     0 0 0 1px rgba(19, 33, 61, 0.9),
     0 0 0 4px rgba(124, 163, 255, 0.3);
   --select-class-arrow: rgba(232, 214, 255, 0.96);
-  --select-class-text: #f8f4ff;
-  --select-class-option-bg: #21193c;
-  --select-class-option-text: #f9f5ff;
-  --legend-bg: rgba(10, 14, 24, 0.94);
-  --legend-border: rgba(144, 181, 255, 0.32);
-  --legend-text: #f7f9ff;
-  --legend-dot-ring: rgba(6, 9, 16, 0.78);
-  --legend-dot-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
-  --tooltip-bg: rgba(9, 12, 22, 0.96);
+  --select-class-text: #3d2474;
+  --select-class-option-bg: #ffffff;
+  --select-class-option-text: #3d2474;
+  --legend-bg: rgba(255, 255, 255, 0.76);
+  --legend-border: rgba(182, 204, 235, 0.64);
+  --legend-text: #2f4864;
+  --legend-dot-ring: rgba(255, 255, 255, 0.82);
+  --legend-dot-shadow: 0 6px 14px rgba(111, 142, 208, 0.18);
+  --tooltip-bg: rgba(255, 255, 255, 0.96);
   --tooltip-border: rgba(144, 181, 255, 0.38);
-  --tooltip-text: #f4f6ff;
-  --tooltip-shadow: 0 16px 34px rgba(5, 7, 12, 0.65);
+  --tooltip-text: #172033;
+  --tooltip-shadow: 0 16px 34px rgba(111, 142, 208, 0.22);
   --tooltip-offset: 0.65rem;
   --cta-primary-bg: linear-gradient(135deg, rgba(91, 141, 239, 0.55), rgba(91, 141, 239, 0.2));
   --cta-primary-hover-bg: linear-gradient(135deg, rgba(124, 163, 255, 0.72), rgba(91, 141, 239, 0.3));
-  --cta-primary-text: #f7f9ff;
-  --cta-secondary-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
-  --cta-secondary-hover-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.06));
+  --cta-primary-text: #ffffff;
+  --cta-secondary-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(232, 241, 255, 0.48));
+  --cta-secondary-hover-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(225, 237, 255, 0.68));
   --cta-secondary-text: var(--fg);
-  --cta-border: rgba(255, 255, 255, 0.18);
+  --cta-border: rgba(177, 203, 238, 0.68);
   --cta-hover-border: rgba(144, 181, 255, 0.88);
-  --cta-shadow: 0 24px 38px rgba(5, 7, 12, 0.55);
+  --cta-shadow: 0 24px 38px rgba(111, 142, 208, 0.18);
   --hw: #3b82f6;
   --exam: #f87171;
   --event: #34d399;
@@ -1196,15 +1196,14 @@ body.calendar-theme main {
   padding: 0.85rem 0;
 }
 
-/* Ensure the FullCalendar column header uses the dark theme background
-   (fixes the white bar that appears in some browsers / themes) */
+/* Keep the FullCalendar column header aligned with the light surface tokens. */
 .fc .fc-col-header,
 .fc .fc-col-header-row,
 .fc-theme-standard thead,
 .fc-theme-standard thead tr,
 .fc-theme-standard thead th,
 .fc .fc-col-header-cell {
-  background: rgba(255, 255, 255, 0.03) !important;
+  background: rgba(255, 255, 255, 0.74) !important;
   color: var(--muted-strong) !important;
 }
 

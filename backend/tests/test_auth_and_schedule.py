@@ -79,6 +79,58 @@ def test_student_role_cannot_access_admin(app_client):
 
     resp = client.get('/api/admin/users')
     assert resp.status_code == 403
+    assert resp.get_json()['message'] == 'forbidden'
+
+
+def test_protected_api_requires_session_login(app_client):
+    client, _, _ = app_client
+
+    resp = client.get('/api/me')
+
+    assert resp.status_code == 401
+    assert resp.get_json()['message'] == 'not_authenticated'
+
+
+def test_admin_session_can_access_admin_api(app_client):
+    client, _, _ = app_client
+
+    resp = client.post('/api/auth/login', json={'email': 'admin@example.com', 'password': 'adminpw'})
+    assert resp.status_code == 200
+
+    resp = client.get('/api/admin/users')
+    assert resp.status_code == 200
+
+
+def test_api_me_refreshes_role_after_role_change(app_client):
+    client, storage, _ = app_client
+    now = datetime.datetime.utcnow()
+
+    user_id = storage['next_ids']['users']
+    storage['next_ids']['users'] = user_id + 1
+    storage['users'][user_id] = {
+        'id': user_id,
+        'email': 'promote-me@sluz.ch',
+        'password_hash': auth_utils.hash_password('Student123!'),
+        'role': 'student',
+        'class_id': 1,
+        'is_active': 1,
+        'created_at': now,
+        'updated_at': now,
+        'email_verified_at': now,
+    }
+    storage['users_by_email']['promote-me@sluz.ch'] = user_id
+
+    resp = client.post('/api/auth/login', json={'email': 'promote-me@sluz.ch', 'password': 'Student123!'})
+    assert resp.status_code == 200
+
+    storage['users'][user_id]['role'] = 'admin'
+
+    resp = client.get('/api/me')
+    assert resp.status_code == 200
+    assert resp.get_json()['data']['role'] == 'admin'
+
+    resp = client.get('/api/admin/users')
+    assert resp.status_code == 200
 
 
 def test_non_admin_cannot_assign_user_to_class(app_client):

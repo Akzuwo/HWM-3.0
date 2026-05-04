@@ -13,7 +13,7 @@ export function HelpPage() {
         <section className="help-hero">
           <h1 data-i18n="help.title">User guide</h1>
           <p data-i18n="help.subtitle">Practical tips so every role can get started right away.</p>
-          <p data-i18n="help.note">This guide follows the refreshed dark theme and scroll animations.</p>
+          <p data-i18n="help.note">This guide follows the refreshed light theme and scroll animations.</p>
         </section>
 
         <section className="help-grid">
