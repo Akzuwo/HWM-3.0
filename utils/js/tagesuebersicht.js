@@ -64,8 +64,19 @@ function renderOverview(container, data) {
   container.innerHTML = '';
 
   const todayKey = normalizeDay(new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(new Date()));
+  const normalizedData = data && Array.isArray(data.day_plan)
+    ? {
+        [new Date(`${data.date}T00:00:00`).toLocaleDateString(locale, { weekday: 'long' })]: data.day_plan,
+        ...(data.next_school_day
+          ? {
+              [new Date(`${data.next_school_day}T00:00:00`).toLocaleDateString(locale, { weekday: 'long' })]:
+                data.next_day_plan || []
+            }
+          : {})
+      }
+    : data;
 
-  for (const [tag, entries] of Object.entries(data)) {
+  for (const [tag, entries] of Object.entries(normalizedData || {})) {
     const card = document.createElement('section');
     card.className = 'day-card';
     if (normalizeDay(tag) === todayKey) {
@@ -92,12 +103,28 @@ function renderOverview(container, data) {
     } else {
       for (const entry of entries) {
         const row = document.createElement('tr');
+        if (entry.status && entry.status !== 'normal') {
+          row.classList.add(`schedule-row--${entry.status}`);
+        }
         const time = document.createElement('td');
         time.textContent = `${entry.start} – ${entry.end}`;
         const subject = document.createElement('td');
-        subject.textContent = entry.fach;
+        subject.textContent = entry.subject || entry.fach;
+        if (Array.isArray(entry.badges) && entry.badges.length) {
+          const badgeWrap = document.createElement('div');
+          badgeWrap.className = 'timetable-badges';
+          for (const badgeText of entry.badges) {
+            const badge = document.createElement('span');
+            badge.className = 'timetable-badge';
+            badge.textContent = badgeText;
+            badgeWrap.appendChild(badge);
+          }
+          subject.appendChild(badgeWrap);
+        }
         const room = document.createElement('td');
-        room.textContent = entry.raum;
+        room.textContent = entry.status === 'room_change' && entry.original_room && entry.new_room
+          ? `${entry.original_room} -> ${entry.new_room}`
+          : (entry.room || entry.raum);
         row.append(time, subject, room);
         tbody.appendChild(row);
       }
@@ -118,7 +145,7 @@ async function loadOverview(container, { showLoading = false } = {}) {
   }
 
   try {
-    const res = await fetchWithSession(`${API_BASE_URL}/tagesuebersicht`);
+    const res = await fetchWithSession(`${API_BASE_URL}/api/timetable/day`);
     if (await responseRequiresClassContext(res)) {
       container.textContent = unauthorizedMessage;
       return;

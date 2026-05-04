@@ -117,6 +117,10 @@ export function CurrentSubjectPage() {
             <span aria-hidden="true">📅</span>
             <span data-i18n="currentSubject.actions.dayOverview">Daily Overview</span>
           </a>
+          <a className="current-subject__button current-subject__button--secondary" href="/timetable-week.html">
+            <span aria-hidden="true">▦</span>
+            <span>Wochenansicht</span>
+          </a>
           <a className="current-subject__button current-subject__button--secondary" href="/index.html">
             <span aria-hidden="true">◀️</span>
             <span data-i18n="currentSubject.actions.back">Back</span>

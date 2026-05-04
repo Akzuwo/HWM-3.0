@@ -682,8 +682,42 @@ class FakeCursor:
             self._rows = []
             return
 
+        if normalized.startswith("select 1 from stundenplan_entries where class_id=%s"):
+            class_id = params[0]
+            if any(entry.get('class_id') == class_id for entry in schedule_entries):
+                self._rows = [(1,)]
+            else:
+                self._rows = []
+            return
+
+        if normalized.startswith("select id, class_id, tag, lesson_number, start, `end`, fach, raum, group_name from stundenplan_entries"):
+            class_id, day = params
+            rows = [
+                {
+                    'id': entry['id'],
+                    'class_id': entry['class_id'],
+                    'tag': entry['tag'],
+                    'lesson_number': entry.get('lesson_number'),
+                    'start': entry['start'],
+                    '`end`': entry['end'],
+                    'end': entry['end'],
+                    'fach': entry['fach'],
+                    'raum': entry.get('raum'),
+                    'group_name': entry.get('group_name'),
+                }
+                for entry in schedule_entries
+                if entry.get('class_id') == class_id and entry.get('tag') == day
+            ]
+            rows.sort(key=lambda row: (row.get('start') or '', row.get('end') or ''))
+            self._prepare_rows(
+                rows,
+                ['id', 'class_id', 'tag', 'lesson_number', 'start', '`end`', 'fach', 'raum', 'group_name'],
+            )
+            return
+
         if normalized.startswith("select id, class_id, tag, start, `end`, fach, raum from stundenplan_entries where class_id=%s"):
             class_id = params[0]
+            day = params[1] if params and len(params) > 1 else None
             rows = [
                 {
                     'id': entry['id'],
@@ -696,7 +730,7 @@ class FakeCursor:
                     'raum': entry.get('raum'),
                 }
                 for entry in schedule_entries
-                if entry.get('class_id') == class_id
+                if entry.get('class_id') == class_id and (day is None or entry.get('tag') == day)
             ]
             rows.sort(key=lambda row: (row.get('tag') or '', row.get('start') or ''))
             self._prepare_rows(

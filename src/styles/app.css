@@ -1943,6 +1943,12 @@ input[type='time']:focus {
 .grade-calculator__table td,
 .schedule-table td,
 .admin-table td { color: #23384f; }
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
 .admin-table-container {
   position: relative;
   overflow: hidden;
@@ -1953,6 +1959,50 @@ input[type='time']:focus {
   backdrop-filter: blur(28px) saturate(132%);
 }
 .admin-table-empty { color: #50657d; }
+.overview-grid--week {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.week-day-notice {
+  margin: 0 0 0.85rem;
+  color: #4f647d;
+  font-size: 0.92rem;
+}
+.schedule-row--cancellation td {
+  color: #8d4b4b;
+  text-decoration: line-through;
+  background: rgba(255, 114, 114, 0.08);
+}
+.schedule-row--room_change td,
+.schedule-row--replacement td,
+.schedule-row--time_shift td,
+.schedule-row--extra_lesson td,
+.schedule-row--special_day td {
+  background: rgba(71, 136, 214, 0.08);
+}
+.timetable-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+.timetable-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.35rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(89, 118, 156, 0.22);
+  color: #35536f;
+  background: rgba(255, 255, 255, 0.5);
+  font-size: 0.74rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+.schedule-table small {
+  display: block;
+  margin-top: 0.35rem;
+  color: #61758c;
+}
 .profile-meta {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

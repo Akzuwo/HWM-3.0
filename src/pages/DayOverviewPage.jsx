@@ -29,6 +29,9 @@ export function DayOverviewPage() {
             <a className="hm-back-link" href="/stundenplan.html" data-i18n="dayOverview.back">
               ◀️ Back
             </a>
+            <a className="hm-back-link" href="/timetable-week.html">
+              Wochenansicht
+            </a>
           </div>
         </header>
 

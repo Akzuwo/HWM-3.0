@@ -18,6 +18,7 @@ const scriptLoaders = {
   currentSubject: () => import('../../utils/js/current-subject.js'),
   stundenplan: () => import('../../utils/js/stundenplan.js'),
   dayOverview: () => import('../../utils/js/tagesuebersicht.js'),
+  timetableWeek: () => import('../../utils/js/timetable-week.js'),
   calendarHeader: () => import('../../utils/js/calendar-header.js'),
   calendar: () => import('../../utils/js/kalender.js'),
   calendarMobile: () => import('../../utils/js/calendar-mobile.js'),

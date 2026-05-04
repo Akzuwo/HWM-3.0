@@ -10,6 +10,7 @@ import { LegalPage } from '../pages/LegalPage';
 import { LoginPage } from '../pages/LoginPage';
 import { ProfilePage } from '../pages/ProfilePage';
 import { TodoListsPage } from '../pages/TodoListsPage';
+import { TimetableWeekPage } from '../pages/TimetableWeekPage';
 import { UpcomingPage } from '../pages/UpcomingPage';
 import { WeeklyPreviewPage } from '../pages/WeeklyPreviewPage';
 
@@ -45,6 +46,10 @@ const PAGE_MAP = {
   'day-overview': {
     title: 'Daily Overview - Homework Manager',
     component: DayOverviewPage
+  },
+  'timetable-week': {
+    title: 'Wochenstundenplan - Homework Manager',
+    component: TimetableWeekPage
   },
   'grade-calculator': {
     title: 'Grade Calculator - Homework Manager',

@@ -730,6 +730,26 @@ WEEKDAY_ORDER = [
 ]
 _WEEKDAY_CANONICAL_MAP = {day.lower(): day for day in WEEKDAY_ORDER}
 _WEEKDAY_INDEX_MAP = {day: index for index, day in enumerate(WEEKDAY_ORDER)}
+SCHOOL_WEEKDAYS = WEEKDAY_ORDER[:5]
+TIMETABLE_TIMEZONE = pytz.timezone(os.getenv('HWM_TIMETABLE_TIMEZONE', 'Europe/Zurich'))
+TIMETABLE_REAL_LESSON_SEARCH_DAYS = max(int(os.getenv('HWM_TIMETABLE_SEARCH_DAYS', 370)), 30)
+TIMETABLE_NON_LESSON_SUBJECTS = {
+    'pause',
+    'mittagspause',
+    'unterrichtsfrei',
+    'frei',
+    'freilektion',
+    'wochenende',
+    '-',
+}
+TIMETABLE_EXCEPTION_TYPES = {
+    'cancellation',
+    'room_change',
+    'time_shift',
+    'replacement',
+    'extra_lesson',
+}
+SPECIAL_DAY_MODES = {'no_lessons', 'show_notice_keep_plan', 'replace_plan'}
 
 
 def _canonicalize_weekday(value: Any) -> str:
@@ -1889,12 +1909,118 @@ def ensure_weekly_preview_cache_table():
         conn.close()
 
 
+def ensure_timetable_feature_tables():
+    try:
+        conn = get_connection()
+    except Exception:
+        return
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS timetable_exceptions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                type VARCHAR(40) NOT NULL,
+                class_id INT NOT NULL,
+                group_name VARCHAR(100) NULL,
+                date DATE NULL,
+                start_date DATE NULL,
+                end_date DATE NULL,
+                lesson_number INT NULL,
+                start_time VARCHAR(8) NULL,
+                end_time VARCHAR(8) NULL,
+                original_subject VARCHAR(255) NULL,
+                new_subject VARCHAR(255) NULL,
+                original_room VARCHAR(255) NULL,
+                new_room VARCHAR(255) NULL,
+                original_start_time VARCHAR(8) NULL,
+                original_end_time VARCHAR(8) NULL,
+                new_start_time VARCHAR(8) NULL,
+                new_end_time VARCHAR(8) NULL,
+                reason TEXT NULL,
+                created_by INT NULL,
+                visible_to_students TINYINT(1) NOT NULL DEFAULT 1,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_timetable_exceptions_lookup (class_id, start_date, end_date, date, type),
+                INDEX idx_timetable_exceptions_date (date)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+        )
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS school_holidays (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                type VARCHAR(40) NOT NULL,
+                start_date DATE NOT NULL,
+                end_date DATE NOT NULL,
+                description TEXT NULL,
+                created_by INT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_school_holidays_range (start_date, end_date, type)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+        )
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS special_days (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                scope VARCHAR(20) NOT NULL DEFAULT 'global',
+                class_id INT NULL,
+                start_date DATE NOT NULL,
+                end_date DATE NOT NULL,
+                mode VARCHAR(40) NOT NULL,
+                description TEXT NULL,
+                created_by INT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_special_days_range (scope, class_id, start_date, end_date, mode)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+        )
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS special_day_lessons (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                special_day_id INT NOT NULL,
+                class_id INT NOT NULL,
+                subject VARCHAR(255) NOT NULL,
+                room VARCHAR(255) NULL,
+                group_name VARCHAR(100) NULL,
+                start_time VARCHAR(8) NOT NULL,
+                end_time VARCHAR(8) NOT NULL,
+                sort_order INT NOT NULL DEFAULT 0,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_special_day_lessons_day (special_day_id, class_id, sort_order)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+        )
+        cur.execute("SHOW COLUMNS FROM stundenplan_entries")
+        columns = {row[0] for row in (cur.fetchall() or [])}
+        if 'group_name' not in columns:
+            cur.execute("ALTER TABLE stundenplan_entries ADD COLUMN group_name VARCHAR(100) NULL AFTER raum")
+        if 'lesson_number' not in columns:
+            cur.execute("ALTER TABLE stundenplan_entries ADD COLUMN lesson_number INT NULL AFTER tag")
+        conn.commit()
+    except mysql.connector.Error:
+        conn.rollback()
+        app.logger.exception('Failed to ensure timetable feature tables')
+    finally:
+        cur.close()
+        conn.close()
+
+
 ensure_stundenplan_table()
 ensure_entries_table()
 ensure_calendar_preferences_table()
 ensure_email_verifications_table()
 ensure_password_resets_table()
 ensure_weekly_preview_cache_table()
+ensure_timetable_feature_tables()
 
 # ---- Klassen- und Stundenplanhilfen ----
 
@@ -2280,6 +2406,914 @@ def _load_calendar_preferences(conn, user_id: int) -> Dict[str, Any]:
         row = {}
     finally:
         cursor.close()
+
+
+def _time_to_minutes(value: Any) -> Optional[int]:
+    text = _format_time_value(value)
+    if text is None:
+        return None
+    try:
+        hour, minute, *_ = str(text).split(':')
+        return int(hour) * 60 + int(minute)
+    except (TypeError, ValueError):
+        return None
+
+
+def _time_hhmm(value: Any) -> Optional[str]:
+    text = _format_time_value(value)
+    if not text:
+        return None
+    parts = str(text).split(':')
+    if len(parts) < 2:
+        return str(text)
+    return f"{int(parts[0]):02d}:{int(parts[1]):02d}" if parts[0].isdigit() and parts[1].isdigit() else ':'.join(parts[:2])
+
+
+def _date_from_db(value: Any) -> Optional[datetime.date]:
+    if isinstance(value, datetime.datetime):
+        return value.date()
+    if isinstance(value, datetime.date):
+        return value
+    return _parse_iso_date(value)
+
+
+def _is_instructional_subject(subject: Any) -> bool:
+    text = str(subject or '').strip().lower()
+    if not text:
+        return False
+    if text in TIMETABLE_NON_LESSON_SUBJECTS:
+        return False
+    return not any(text.startswith(prefix) for prefix in ('wochenende', 'unterrichtsfrei'))
+
+
+def _lesson_datetime(day: datetime.date, value: Any) -> Optional[datetime.datetime]:
+    minutes = _time_to_minutes(value)
+    if minutes is None:
+        return None
+    return TIMETABLE_TIMEZONE.localize(
+        datetime.datetime.combine(day, datetime.time(hour=minutes // 60, minute=minutes % 60))
+    )
+
+
+def _lesson_sort_key(lesson: Dict[str, Any]) -> Tuple[str, str, int]:
+    return (lesson.get('start') or '', lesson.get('end') or '', int(lesson.get('id') or 0))
+
+
+def _serialize_timetable_lesson(lesson: Dict[str, Any], *, include_date: bool = True) -> Dict[str, Any]:
+    payload = {
+        'id': lesson.get('id'),
+        'subject': lesson.get('subject'),
+        'fach': lesson.get('subject'),
+        'room': lesson.get('room') or '-',
+        'raum': lesson.get('room') or '-',
+        'group': lesson.get('group'),
+        'group_name': lesson.get('group'),
+        'lesson_number': lesson.get('lesson_number'),
+        'start': lesson.get('start'),
+        'end': lesson.get('end'),
+        'status': lesson.get('status') or 'normal',
+        'badges': list(lesson.get('badges') or []),
+        'is_real_lesson': bool(lesson.get('is_real_lesson')),
+    }
+    for key in (
+        'original_subject',
+        'new_subject',
+        'original_room',
+        'new_room',
+        'original_start',
+        'original_end',
+        'new_start',
+        'new_end',
+        'reason',
+        'exception_id',
+    ):
+        if lesson.get(key) not in (None, ''):
+            payload[key] = lesson.get(key)
+    if include_date:
+        lesson_date = lesson.get('date')
+        payload['date'] = lesson_date.isoformat() if isinstance(lesson_date, datetime.date) else lesson_date
+    return payload
+
+
+def _query_optional_rows(conn, query: str, params: Tuple[Any, ...] = ()) -> List[Dict[str, Any]]:
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute(query, params)
+        return cursor.fetchall() or []
+    except mysql.connector.Error:
+        app.logger.warning('Optional timetable query failed; treating table/column as unavailable', exc_info=True)
+        return []
+    finally:
+        cursor.close()
+
+
+def _load_timetable_base_lessons(conn, class_id: int, day: datetime.date) -> List[Dict[str, Any]]:
+    weekday = day.strftime('%A')
+    rows = _query_optional_rows(
+        conn,
+        """
+        SELECT id, class_id, tag, lesson_number, start, `end`, fach, raum, group_name
+        FROM stundenplan_entries
+        WHERE class_id=%s AND tag=%s
+        ORDER BY start, `end`, id
+        """,
+        (class_id, weekday),
+    )
+    if not rows:
+        rows = _query_optional_rows(
+            conn,
+            """
+            SELECT id, class_id, tag, start, `end`, fach, raum
+            FROM stundenplan_entries
+            WHERE class_id=%s AND tag=%s
+            ORDER BY start, `end`, id
+            """,
+            (class_id, weekday),
+        )
+    lessons = []
+    for index, row in enumerate(rows, start=1):
+        subject = row.get('fach')
+        status = 'normal'
+        lessons.append(
+            {
+                'id': row.get('id'),
+                'source': 'normal',
+                'date': day,
+                'class_id': class_id,
+                'lesson_number': row.get('lesson_number') or index,
+                'subject': subject,
+                'room': row.get('raum') or '-',
+                'group': row.get('group_name'),
+                'start': _time_hhmm(row.get('start')),
+                'end': _time_hhmm(row.get('end')),
+                'status': status,
+                'badges': ['Gruppe'] if row.get('group_name') else [],
+                'is_real_lesson': _is_instructional_subject(subject) and bool(row.get('raum') not in (None, '-', '')),
+            }
+        )
+    return lessons
+
+
+def _load_timetable_exceptions(conn, class_id: int, start: datetime.date, end: datetime.date) -> List[Dict[str, Any]]:
+    rows = _query_optional_rows(
+        conn,
+        """
+        SELECT id, type, class_id, group_name, date, start_date, end_date, lesson_number,
+               start_time, end_time, original_subject, new_subject, original_room, new_room,
+               original_start_time, original_end_time, new_start_time, new_end_time,
+               reason, visible_to_students
+        FROM timetable_exceptions
+        WHERE class_id=%s
+          AND COALESCE(start_date, date) <= %s
+          AND COALESCE(end_date, date, start_date) >= %s
+        ORDER BY id
+        """,
+        (class_id, end, start),
+    )
+    return rows
+
+
+def _load_school_holiday_for_day(conn, day: datetime.date) -> Optional[Dict[str, Any]]:
+    rows = _query_optional_rows(
+        conn,
+        """
+        SELECT id, name, type, start_date, end_date, description
+        FROM school_holidays
+        WHERE start_date <= %s AND end_date >= %s
+        ORDER BY start_date, id
+        LIMIT 1
+        """,
+        (day, day),
+    )
+    return rows[0] if rows else None
+
+
+def _load_special_days_for_day(conn, class_id: int, day: datetime.date) -> List[Dict[str, Any]]:
+    return _query_optional_rows(
+        conn,
+        """
+        SELECT id, name, scope, class_id, start_date, end_date, mode, description
+        FROM special_days
+        WHERE start_date <= %s AND end_date >= %s
+          AND (scope='global' OR (scope='class' AND class_id=%s))
+        ORDER BY CASE WHEN scope='global' THEN 0 ELSE 1 END, id
+        """,
+        (day, day, class_id),
+    )
+
+
+def _load_special_day_lessons(conn, special_day_id: int, class_id: int, day: datetime.date) -> List[Dict[str, Any]]:
+    rows = _query_optional_rows(
+        conn,
+        """
+        SELECT id, special_day_id, class_id, subject, room, group_name, start_time, end_time, sort_order
+        FROM special_day_lessons
+        WHERE special_day_id=%s AND class_id=%s
+        ORDER BY sort_order, start_time, id
+        """,
+        (special_day_id, class_id),
+    )
+    lessons = []
+    for index, row in enumerate(rows, start=1):
+        lessons.append(
+            {
+                'id': row.get('id'),
+                'source': 'special_day',
+                'date': day,
+                'class_id': class_id,
+                'lesson_number': index,
+                'subject': row.get('subject'),
+                'room': row.get('room') or '-',
+                'group': row.get('group_name'),
+                'start': _time_hhmm(row.get('start_time')),
+                'end': _time_hhmm(row.get('end_time')),
+                'status': 'special_day',
+                'badges': ['Sondertag'] + (['Gruppe'] if row.get('group_name') else []),
+                'is_real_lesson': _is_instructional_subject(row.get('subject')),
+            }
+        )
+    return lessons
+
+
+def _exception_applies_to_day(exception: Dict[str, Any], day: datetime.date) -> bool:
+    start = _date_from_db(exception.get('start_date')) or _date_from_db(exception.get('date'))
+    end = _date_from_db(exception.get('end_date')) or _date_from_db(exception.get('date')) or start
+    return bool(start and end and start <= day <= end)
+
+
+def _exception_matches_lesson(exception: Dict[str, Any], lesson: Dict[str, Any]) -> bool:
+    exception_group = (exception.get('group_name') or '').strip()
+    lesson_group = (lesson.get('group') or '').strip()
+    if exception_group and exception_group != lesson_group:
+        return False
+    lesson_number = exception.get('lesson_number')
+    if lesson_number not in (None, ''):
+        try:
+            if int(lesson_number) == int(lesson.get('lesson_number') or 0):
+                return True
+        except (TypeError, ValueError):
+            pass
+    start = _time_hhmm(exception.get('start_time') or exception.get('original_start_time'))
+    end = _time_hhmm(exception.get('end_time') or exception.get('original_end_time'))
+    if start and end:
+        return start == lesson.get('start') and end == lesson.get('end')
+    original_subject = (exception.get('original_subject') or '').strip()
+    if original_subject and original_subject != (lesson.get('subject') or '').strip():
+        return False
+    return True
+
+
+def _apply_lesson_exception(lesson: Dict[str, Any], exception: Dict[str, Any]) -> Dict[str, Any]:
+    updated = dict(lesson)
+    updated['exception_id'] = exception.get('id')
+    updated['reason'] = exception.get('reason')
+    ex_type = exception.get('type')
+    if ex_type == 'cancellation':
+        updated['status'] = 'cancellation'
+        updated['badges'] = list(OrderedDict.fromkeys((updated.get('badges') or []) + ['Stundenausfall']))
+        updated['is_real_lesson'] = False
+    elif ex_type == 'room_change':
+        original_room = exception.get('original_room') or updated.get('room')
+        new_room = exception.get('new_room') or updated.get('room')
+        updated.update(
+            {
+                'status': 'room_change',
+                'original_room': original_room,
+                'new_room': new_room,
+                'room': new_room,
+                'badges': list(OrderedDict.fromkeys((updated.get('badges') or []) + ['Raumwechsel'])),
+            }
+        )
+    elif ex_type == 'replacement':
+        original_subject = exception.get('original_subject') or updated.get('subject')
+        new_subject = exception.get('new_subject') or updated.get('subject')
+        updated.update(
+            {
+                'status': 'replacement',
+                'original_subject': original_subject,
+                'new_subject': new_subject,
+                'subject': new_subject,
+                'room': exception.get('new_room') or exception.get('original_room') or exception.get('new_room') or updated.get('room'),
+                'badges': list(OrderedDict.fromkeys((updated.get('badges') or []) + ['Ersatzlektion'])),
+                'is_real_lesson': _is_instructional_subject(new_subject),
+            }
+        )
+    return updated
+
+
+def _exception_to_extra_lesson(exception: Dict[str, Any], day: datetime.date, class_id: int) -> Dict[str, Any]:
+    is_time_shift = exception.get('type') == 'time_shift'
+    subject = exception.get('new_subject') or exception.get('original_subject') or 'Lektion'
+    start = _time_hhmm(exception.get('new_start_time') if is_time_shift else exception.get('start_time'))
+    end = _time_hhmm(exception.get('new_end_time') if is_time_shift else exception.get('end_time'))
+    room = exception.get('new_room') or exception.get('original_room') or '-'
+    return {
+        'id': f"exception-{exception.get('id')}",
+        'source': 'exception',
+        'date': day,
+        'class_id': class_id,
+        'lesson_number': exception.get('lesson_number'),
+        'subject': subject,
+        'room': room,
+        'group': exception.get('group_name'),
+        'start': start,
+        'end': end,
+        'status': 'time_shift' if is_time_shift else 'extra_lesson',
+        'badges': ['Zeitverschiebung'] if is_time_shift else ['Zusatzlektion'],
+        'is_real_lesson': _is_instructional_subject(subject),
+        'exception_id': exception.get('id'),
+        'original_subject': exception.get('original_subject'),
+        'original_room': exception.get('original_room'),
+        'original_start': _time_hhmm(exception.get('original_start_time') or exception.get('start_time')),
+        'original_end': _time_hhmm(exception.get('original_end_time') or exception.get('end_time')),
+        'new_start': start,
+        'new_end': end,
+        'reason': exception.get('reason'),
+    }
+
+
+def _calculate_timetable_day(conn, class_id: int, day: datetime.date) -> Dict[str, Any]:
+    weekday = day.strftime('%A').lower()
+    holiday = _load_school_holiday_for_day(conn, day)
+    if holiday:
+        holiday_type = holiday.get('type') or 'holiday'
+        return {
+            'date': day.isoformat(),
+            'weekday': weekday,
+            'is_school_day': False,
+            'day_status': holiday_type,
+            'day_status_label': holiday.get('name'),
+            'notice': f"Heute ist kein Unterricht: {holiday.get('name')}",
+            'lessons': [],
+            'applied_special_cases': list(_serialize_rows([holiday])),
+        }
+
+    special_days = _load_special_days_for_day(conn, class_id, day)
+    no_lesson_day = next((item for item in special_days if item.get('mode') == 'no_lessons'), None)
+    if no_lesson_day:
+        return {
+            'date': day.isoformat(),
+            'weekday': weekday,
+            'is_school_day': False,
+            'day_status': 'special_day',
+            'day_status_label': no_lesson_day.get('name'),
+            'notice': f"Heute ist kein Unterricht: {no_lesson_day.get('name')}",
+            'lessons': [],
+            'applied_special_cases': list(_serialize_rows(special_days)),
+        }
+
+    replace_day = next((item for item in special_days if item.get('mode') == 'replace_plan'), None)
+    if replace_day:
+        lessons = _load_special_day_lessons(conn, replace_day.get('id'), class_id, day)
+    else:
+        lessons = _load_timetable_base_lessons(conn, class_id, day)
+
+    exceptions = [row for row in _load_timetable_exceptions(conn, class_id, day, day) if _exception_applies_to_day(row, day)]
+    shifted_exception_ids = set()
+    final_lessons = []
+    for lesson in lessons:
+        current = dict(lesson)
+        skip_original = False
+        for exception in exceptions:
+            if not _exception_matches_lesson(exception, current):
+                continue
+            if exception.get('type') == 'time_shift':
+                shifted_exception_ids.add(exception.get('id'))
+                skip_original = True
+                break
+            if exception.get('type') in {'cancellation', 'room_change', 'replacement'}:
+                current = _apply_lesson_exception(current, exception)
+        if not skip_original:
+            final_lessons.append(current)
+
+    for exception in exceptions:
+        if exception.get('type') == 'extra_lesson' or exception.get('id') in shifted_exception_ids:
+            final_lessons.append(_exception_to_extra_lesson(exception, day, class_id))
+
+    final_lessons.sort(key=_lesson_sort_key)
+    notice_day = next((item for item in special_days if item.get('mode') == 'show_notice_keep_plan'), None)
+    day_status = 'special_day' if (replace_day or notice_day) else 'normal'
+    day_label = (replace_day or notice_day or {}).get('name')
+    if day.weekday() >= 5 and not any(lesson.get('is_real_lesson') for lesson in final_lessons):
+        day_status = 'weekend'
+        day_label = 'Wochenende'
+
+    return {
+        'date': day.isoformat(),
+        'weekday': weekday,
+        'is_school_day': bool(day.weekday() < 5 and day_status != 'weekend'),
+        'day_status': day_status,
+        'day_status_label': day_label,
+        'notice': f"Sondertag: {day_label}" if notice_day else None,
+        'lessons': [_serialize_timetable_lesson(lesson) for lesson in final_lessons],
+        'applied_special_cases': list(_serialize_rows(special_days + exceptions)),
+    }
+
+
+def _find_next_real_lesson(conn, class_id: int, now: datetime.datetime) -> Optional[Dict[str, Any]]:
+    if now.tzinfo is None:
+        now = TIMETABLE_TIMEZONE.localize(now)
+    else:
+        now = now.astimezone(TIMETABLE_TIMEZONE)
+    start_date = now.date()
+    for offset in range(TIMETABLE_REAL_LESSON_SEARCH_DAYS):
+        day = start_date + datetime.timedelta(days=offset)
+        plan = _calculate_timetable_day(conn, class_id, day)
+        for lesson in plan.get('lessons') or []:
+            if not lesson.get('is_real_lesson'):
+                continue
+            start_dt = _lesson_datetime(day, lesson.get('start'))
+            if start_dt and start_dt > now:
+                next_lesson = dict(lesson)
+                next_lesson['date'] = day.isoformat()
+                return next_lesson
+    return None
+
+
+def _next_school_day(conn, class_id: int, after_day: datetime.date) -> Optional[datetime.date]:
+    for offset in range(1, TIMETABLE_REAL_LESSON_SEARCH_DAYS):
+        day = after_day + datetime.timedelta(days=offset)
+        plan = _calculate_timetable_day(conn, class_id, day)
+        if any(lesson.get('is_real_lesson') for lesson in plan.get('lessons') or []):
+            return day
+    return None
+
+
+def _calculate_timetable_live(conn, class_id: int, now: Optional[datetime.datetime] = None) -> Dict[str, Any]:
+    now = now or datetime.datetime.now(TIMETABLE_TIMEZONE)
+    if now.tzinfo is None:
+        now = TIMETABLE_TIMEZONE.localize(now)
+    else:
+        now = now.astimezone(TIMETABLE_TIMEZONE)
+    day = now.date()
+    day_plan = _calculate_timetable_day(conn, class_id, day)
+    current_lesson = None
+    for lesson in day_plan.get('lessons') or []:
+        if not lesson.get('is_real_lesson'):
+            continue
+        start_dt = _lesson_datetime(day, lesson.get('start'))
+        end_dt = _lesson_datetime(day, lesson.get('end'))
+        if start_dt and end_dt and start_dt <= now < end_dt:
+            current_lesson = dict(lesson)
+            remaining = max(int((end_dt - now).total_seconds()), 0)
+            total = max(int((end_dt - start_dt).total_seconds()), 0)
+            current_lesson['remaining_seconds'] = remaining
+            current_lesson['verbleibende_sekunden'] = remaining
+            current_lesson['total_seconds'] = total
+            current_lesson['gesamt_sekunden'] = total
+            break
+
+    next_lesson = _find_next_real_lesson(conn, class_id, now)
+    next_start_dt = None
+    if next_lesson:
+        next_date = _parse_iso_date(next_lesson.get('date')) or day
+        next_start_dt = _lesson_datetime(next_date, next_lesson.get('start'))
+
+    return {
+        'class_id': class_id,
+        'date': day.isoformat(),
+        'is_school_day': day_plan.get('is_school_day'),
+        'day_status': day_plan.get('day_status'),
+        'day_status_label': day_plan.get('day_status_label'),
+        'notice': day_plan.get('notice'),
+        'current_lesson': current_lesson,
+        'next_lesson': next_lesson,
+        'time_until_next_lesson_seconds': max(int((next_start_dt - now).total_seconds()), 0) if next_start_dt else None,
+        'day_plan': day_plan,
+    }
+
+
+def _resolve_timetable_class_id_from_request(conn) -> Tuple[Optional[int], Optional[Tuple[Any, int]]]:
+    _, auth_error = _authenticate_request()
+    if auth_error:
+        status, payload, exc = auth_error
+        _log_request_error(status, payload.get('message', 'unauthorized'), exc=exc)
+        return None, (jsonify(payload), status)
+    role = session.get('role')
+    session_class_id = _get_session_class_id()
+    requested = request.args.get('class_id') or request.args.get('class')
+    if role in {'admin', 'teacher'} and requested not in (None, ''):
+        class_id = _ensure_int(requested, allow_none=False)
+        if not class_id:
+            try:
+                class_id = _resolve_class_id(requested, conn)
+            except ValueError:
+                return None, (jsonify(status='error', message='class_not_found'), 404)
+        return class_id, None
+    if session_class_id is None:
+        _log_request_error(403, 'class_required')
+        return None, (jsonify(status='error', message='class_required'), 403)
+    return session_class_id, None
+
+
+def _legacy_live_payload(live: Dict[str, Any]) -> Dict[str, Any]:
+    current = live.get('current_lesson') or {}
+    next_lesson = live.get('next_lesson') or {}
+    remaining = current.get('remaining_seconds') or 0
+    minutes, seconds = divmod(int(remaining), 60)
+    return {
+        'fach': current.get('subject') or 'Frei',
+        'verbleibend': f"{minutes:02d}:{seconds:02d}" if current else '-',
+        'raum': current.get('room') or '-',
+        'start': current.get('start'),
+        'ende': current.get('end'),
+        'verbleibende_sekunden': int(remaining),
+        'gesamt_sekunden': int(current.get('total_seconds') or 0),
+        'naechste_start': next_lesson.get('start') or '-',
+        'naechste_start_iso': (
+            f"{next_lesson.get('date')}T{next_lesson.get('start')}:00" if next_lesson.get('date') and next_lesson.get('start') else None
+        ),
+        'naechster_raum': next_lesson.get('room') or '-',
+        'naechstes_fach': next_lesson.get('subject') or '-',
+        'hinweis': live.get('notice'),
+        'api_version': 2,
+    }
+
+
+def _legacy_day_payload(day_payload: Dict[str, Any]) -> OrderedDict:
+    result = OrderedDict()
+    day_date = _parse_iso_date(day_payload.get('date'))
+    next_date = _parse_iso_date(day_payload.get('next_school_day'))
+    if day_date:
+        result[day_date.strftime('%A')] = [
+            {'start': item.get('start'), 'end': item.get('end'), 'fach': item.get('subject'), 'raum': item.get('room')}
+            for item in day_payload.get('day_plan') or []
+        ]
+    if next_date:
+        result[next_date.strftime('%A')] = [
+            {'start': item.get('start'), 'end': item.get('end'), 'fach': item.get('subject'), 'raum': item.get('room')}
+            for item in day_payload.get('next_day_plan') or []
+        ]
+    return result
+
+
+def _request_json_payload() -> Dict[str, Any]:
+    data = request.get_json(silent=True)
+    return data if isinstance(data, dict) else {}
+
+
+def _date_range_from_payload(data: Dict[str, Any], *, require_date: bool = True) -> Tuple[Optional[str], Optional[str], Optional[Any]]:
+    start = _parse_iso_date(data.get('start_date') or data.get('date'))
+    end = _parse_iso_date(data.get('end_date') or data.get('date') or data.get('start_date'))
+    if require_date and not start:
+        return None, None, (jsonify(status='error', message='invalid_start_date'), 400)
+    if start and end and end < start:
+        return None, None, (jsonify(status='error', message='end_date_before_start_date'), 400)
+    return start.isoformat() if start else None, (end or start).isoformat() if (end or start) else None, None
+
+
+def _coerce_timetable_admin_class_id(data: Dict[str, Any]) -> Tuple[Optional[int], Optional[Any]]:
+    role = session.get('role')
+    session_class_id = _get_session_class_id()
+    raw_class_id = data.get('class_id')
+    class_id = _ensure_int(raw_class_id, allow_none=False)
+    if role == 'class_admin':
+        if session_class_id is None:
+            return None, (jsonify(status='error', message='class_required'), 403)
+        if class_id and class_id != session_class_id:
+            return None, (jsonify(status='error', message='forbidden'), 403)
+        return session_class_id, None
+    if not class_id:
+        return None, (jsonify(status='error', message='invalid_class_id'), 400)
+    return class_id, None
+
+
+def _normalize_short_time(value: Any) -> Optional[str]:
+    cleaned = _time_hhmm(value)
+    return cleaned if cleaned else None
+
+
+def _timetable_exception_payload(data: Dict[str, Any], class_id: int) -> Tuple[Optional[Dict[str, Any]], Optional[Any]]:
+    ex_type = str(data.get('type') or '').strip()
+    if ex_type not in TIMETABLE_EXCEPTION_TYPES:
+        return None, (jsonify(status='error', message='invalid_type'), 400)
+    start_date, end_date, error = _date_range_from_payload(data)
+    if error:
+        return None, error
+    payload = {
+        'type': ex_type,
+        'class_id': class_id,
+        'group_name': (str(data.get('group_name')).strip() if data.get('group_name') not in (None, '') else None),
+        'date': start_date if start_date == end_date else None,
+        'start_date': start_date,
+        'end_date': end_date,
+        'lesson_number': _ensure_int(data.get('lesson_number'), allow_none=True),
+        'start_time': _normalize_short_time(data.get('start_time')),
+        'end_time': _normalize_short_time(data.get('end_time')),
+        'original_subject': (str(data.get('original_subject')).strip() if data.get('original_subject') not in (None, '') else None),
+        'new_subject': (str(data.get('new_subject')).strip() if data.get('new_subject') not in (None, '') else None),
+        'original_room': (str(data.get('original_room')).strip() if data.get('original_room') not in (None, '') else None),
+        'new_room': (str(data.get('new_room')).strip() if data.get('new_room') not in (None, '') else None),
+        'original_start_time': _normalize_short_time(data.get('original_start_time')),
+        'original_end_time': _normalize_short_time(data.get('original_end_time')),
+        'new_start_time': _normalize_short_time(data.get('new_start_time')),
+        'new_end_time': _normalize_short_time(data.get('new_end_time')),
+        'reason': (str(data.get('reason')).strip() if data.get('reason') not in (None, '') else None),
+        'visible_to_students': 1 if _parse_bool(data.get('visible_to_students'), default=True) else 0,
+    }
+    return payload, None
+
+
+@app.route('/api/admin/timetable/exceptions', methods=['GET', 'POST', 'OPTIONS'])
+@require_role('admin', 'class_admin')
+def timetable_exceptions_collection():
+    if request.method == 'OPTIONS':
+        return _cors_preflight()
+    try:
+        conn = get_connection()
+    except Exception:
+        return jsonify(status='error', message='database_unavailable'), 503
+    with closing(conn):
+        if request.method == 'GET':
+            role = session.get('role')
+            class_id = _ensure_int(request.args.get('class_id'), allow_none=True)
+            if role == 'class_admin':
+                class_id = _get_session_class_id()
+            params: List[Any] = []
+            where = []
+            if class_id:
+                where.append('class_id=%s')
+                params.append(class_id)
+            query = (
+                "SELECT id, type, class_id, group_name, date, start_date, end_date, lesson_number, "
+                "start_time, end_time, original_subject, new_subject, original_room, new_room, "
+                "original_start_time, original_end_time, new_start_time, new_end_time, reason, visible_to_students "
+                "FROM timetable_exceptions"
+            )
+            if where:
+                query += ' WHERE ' + ' AND '.join(where)
+            query += ' ORDER BY COALESCE(start_date, date) DESC, id DESC'
+            return jsonify(status='ok', data=list(_serialize_rows(_query_optional_rows(conn, query, tuple(params)))))
+
+        data = _request_json_payload()
+        class_id, error = _coerce_timetable_admin_class_id(data)
+        if error:
+            return error
+        payload, error = _timetable_exception_payload(data, class_id)
+        if error:
+            return error
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                """
+                INSERT INTO timetable_exceptions
+                (type, class_id, group_name, date, start_date, end_date, lesson_number, start_time, end_time,
+                 original_subject, new_subject, original_room, new_room, original_start_time, original_end_time,
+                 new_start_time, new_end_time, reason, created_by, visible_to_students)
+                VALUES
+                (%(type)s, %(class_id)s, %(group_name)s, %(date)s, %(start_date)s, %(end_date)s, %(lesson_number)s,
+                 %(start_time)s, %(end_time)s, %(original_subject)s, %(new_subject)s, %(original_room)s, %(new_room)s,
+                 %(original_start_time)s, %(original_end_time)s, %(new_start_time)s, %(new_end_time)s,
+                 %(reason)s, %(created_by)s, %(visible_to_students)s)
+                """,
+                {**payload, 'created_by': session.get('user_id')},
+            )
+            exception_id = cursor.lastrowid
+            _log_admin_action(conn, 'create', 'timetable_exception', exception_id, payload)
+            conn.commit()
+        except mysql.connector.Error:
+            conn.rollback()
+            return jsonify(status='error', message='database_unavailable'), 503
+        finally:
+            cursor.close()
+        return jsonify(status='ok', id=exception_id)
+
+
+@app.route('/api/admin/timetable/exceptions/<int:exception_id>', methods=['PUT', 'DELETE', 'OPTIONS'])
+@require_role('admin', 'class_admin')
+def timetable_exceptions_resource(exception_id: int):
+    if request.method == 'OPTIONS':
+        return _cors_preflight()
+    try:
+        conn = get_connection()
+    except Exception:
+        return jsonify(status='error', message='database_unavailable'), 503
+    with closing(conn):
+        existing = _query_optional_rows(conn, "SELECT id, class_id FROM timetable_exceptions WHERE id=%s", (exception_id,))
+        if not existing:
+            return jsonify(status='error', message='exception_not_found'), 404
+        if session.get('role') == 'class_admin' and existing[0].get('class_id') != _get_session_class_id():
+            return jsonify(status='error', message='forbidden'), 403
+        if request.method == 'DELETE':
+            cursor = conn.cursor()
+            try:
+                cursor.execute("DELETE FROM timetable_exceptions WHERE id=%s", (exception_id,))
+                _log_admin_action(conn, 'delete', 'timetable_exception', exception_id)
+                conn.commit()
+            except mysql.connector.Error:
+                conn.rollback()
+                return jsonify(status='error', message='database_unavailable'), 503
+            finally:
+                cursor.close()
+            return jsonify(status='ok')
+
+        data = _request_json_payload()
+        class_id, error = _coerce_timetable_admin_class_id({**data, 'class_id': data.get('class_id') or existing[0].get('class_id')})
+        if error:
+            return error
+        payload, error = _timetable_exception_payload({**data, 'class_id': class_id}, class_id)
+        if error:
+            return error
+        assignments = ', '.join([f"{key}=%({key})s" for key in payload.keys()])
+        cursor = conn.cursor()
+        try:
+            cursor.execute(f"UPDATE timetable_exceptions SET {assignments}, updated_at=CURRENT_TIMESTAMP WHERE id=%(id)s", {**payload, 'id': exception_id})
+            _log_admin_action(conn, 'update', 'timetable_exception', exception_id, payload)
+            conn.commit()
+        except mysql.connector.Error:
+            conn.rollback()
+            return jsonify(status='error', message='database_unavailable'), 503
+        finally:
+            cursor.close()
+        return jsonify(status='ok')
+
+
+@app.route('/api/admin/timetable/holidays', methods=['GET', 'POST', 'OPTIONS'])
+@require_role('admin')
+def timetable_holidays_collection():
+    if request.method == 'OPTIONS':
+        return _cors_preflight()
+    try:
+        conn = get_connection()
+    except Exception:
+        return jsonify(status='error', message='database_unavailable'), 503
+    with closing(conn):
+        if request.method == 'GET':
+            rows = _query_optional_rows(conn, "SELECT id, name, type, start_date, end_date, description FROM school_holidays ORDER BY start_date DESC, id DESC")
+            return jsonify(status='ok', data=list(_serialize_rows(rows)))
+        data = _request_json_payload()
+        name = str(data.get('name') or '').strip()
+        holiday_type = str(data.get('type') or '').strip()
+        if not name or holiday_type not in {'holiday', 'public_holiday'}:
+            return jsonify(status='error', message='invalid_holiday'), 400
+        start_date, end_date, error = _date_range_from_payload(data)
+        if error:
+            return error
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                """
+                INSERT INTO school_holidays (name, type, start_date, end_date, description, created_by)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                """,
+                (name, holiday_type, start_date, end_date, data.get('description'), session.get('user_id')),
+            )
+            item_id = cursor.lastrowid
+            _log_admin_action(conn, 'create', 'school_holiday', item_id, {'name': name, 'type': holiday_type})
+            conn.commit()
+        except mysql.connector.Error:
+            conn.rollback()
+            return jsonify(status='error', message='database_unavailable'), 503
+        finally:
+            cursor.close()
+        return jsonify(status='ok', id=item_id)
+
+
+@app.route('/api/admin/timetable/holidays/<int:item_id>', methods=['PUT', 'DELETE', 'OPTIONS'])
+@require_role('admin')
+def timetable_holidays_resource(item_id: int):
+    if request.method == 'OPTIONS':
+        return _cors_preflight()
+    try:
+        conn = get_connection()
+    except Exception:
+        return jsonify(status='error', message='database_unavailable'), 503
+    with closing(conn):
+        if request.method == 'DELETE':
+            cursor = conn.cursor()
+            try:
+                cursor.execute("DELETE FROM school_holidays WHERE id=%s", (item_id,))
+                conn.commit()
+            except mysql.connector.Error:
+                conn.rollback()
+                return jsonify(status='error', message='database_unavailable'), 503
+            finally:
+                cursor.close()
+            return jsonify(status='ok')
+        data = _request_json_payload()
+        start_date, end_date, error = _date_range_from_payload(data)
+        if error:
+            return error
+        name = str(data.get('name') or '').strip()
+        holiday_type = str(data.get('type') or '').strip()
+        if not name or holiday_type not in {'holiday', 'public_holiday'}:
+            return jsonify(status='error', message='invalid_holiday'), 400
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                "UPDATE school_holidays SET name=%s, type=%s, start_date=%s, end_date=%s, description=%s, updated_at=CURRENT_TIMESTAMP WHERE id=%s",
+                (name, holiday_type, start_date, end_date, data.get('description'), item_id),
+            )
+            conn.commit()
+        except mysql.connector.Error:
+            conn.rollback()
+            return jsonify(status='error', message='database_unavailable'), 503
+        finally:
+            cursor.close()
+        return jsonify(status='ok')
+
+
+@app.route('/api/admin/timetable/special-days', methods=['GET', 'POST', 'OPTIONS'])
+@require_role('admin')
+def timetable_special_days_collection():
+    if request.method == 'OPTIONS':
+        return _cors_preflight()
+    try:
+        conn = get_connection()
+    except Exception:
+        return jsonify(status='error', message='database_unavailable'), 503
+    with closing(conn):
+        if request.method == 'GET':
+            rows = _query_optional_rows(conn, "SELECT id, name, scope, class_id, start_date, end_date, mode, description FROM special_days ORDER BY start_date DESC, id DESC")
+            return jsonify(status='ok', data=list(_serialize_rows(rows)))
+        data = _request_json_payload()
+        name = str(data.get('name') or '').strip()
+        scope = str(data.get('scope') or 'global').strip()
+        mode = str(data.get('mode') or '').strip()
+        class_id = _ensure_int(data.get('class_id'), allow_none=True)
+        if not name or scope not in {'global', 'class'} or mode not in SPECIAL_DAY_MODES or (scope == 'class' and not class_id):
+            return jsonify(status='error', message='invalid_special_day'), 400
+        start_date, end_date, error = _date_range_from_payload(data)
+        if error:
+            return error
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                """
+                INSERT INTO special_days (name, scope, class_id, start_date, end_date, mode, description, created_by)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (name, scope, class_id if scope == 'class' else None, start_date, end_date, mode, data.get('description'), session.get('user_id')),
+            )
+            special_day_id = cursor.lastrowid
+            for index, lesson in enumerate(data.get('lessons') or []):
+                cursor.execute(
+                    """
+                    INSERT INTO special_day_lessons
+                    (special_day_id, class_id, subject, room, group_name, start_time, end_time, sort_order)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        special_day_id,
+                        _ensure_int(lesson.get('class_id'), allow_none=True) or class_id,
+                        str(lesson.get('subject') or lesson.get('fach') or '').strip(),
+                        lesson.get('room') or lesson.get('raum'),
+                        lesson.get('group_name'),
+                        _normalize_short_time(lesson.get('start_time') or lesson.get('start')),
+                        _normalize_short_time(lesson.get('end_time') or lesson.get('end')),
+                        index,
+                    ),
+                )
+            conn.commit()
+        except mysql.connector.Error:
+            conn.rollback()
+            return jsonify(status='error', message='database_unavailable'), 503
+        finally:
+            cursor.close()
+        return jsonify(status='ok', id=special_day_id)
+
+
+@app.route('/api/admin/timetable/special-days/<int:item_id>', methods=['DELETE', 'OPTIONS'])
+@require_role('admin')
+def timetable_special_days_resource(item_id: int):
+    if request.method == 'OPTIONS':
+        return _cors_preflight()
+    try:
+        conn = get_connection()
+    except Exception:
+        return jsonify(status='error', message='database_unavailable'), 503
+    with closing(conn):
+        cursor = conn.cursor()
+        try:
+            cursor.execute("DELETE FROM special_day_lessons WHERE special_day_id=%s", (item_id,))
+            cursor.execute("DELETE FROM special_days WHERE id=%s", (item_id,))
+            conn.commit()
+        except mysql.connector.Error:
+            conn.rollback()
+            return jsonify(status='error', message='database_unavailable'), 503
+        finally:
+            cursor.close()
+    return jsonify(status='ok')
+
+
+@app.route('/api/admin/timetable/preview', methods=['GET'])
+@require_role('admin')
+def timetable_admin_preview():
+    try:
+        conn = get_connection()
+    except Exception:
+        return jsonify(status='error', message='database_unavailable'), 503
+    class_id = _ensure_int(request.args.get('class_id'), allow_none=False)
+    if not class_id:
+        return jsonify(status='error', message='invalid_class_id'), 400
+    requested_date = _parse_iso_date(request.args.get('date')) or datetime.datetime.now(TIMETABLE_TIMEZONE).date()
+    with closing(conn):
+        if not _class_has_schedule(conn, class_id):
+            return jsonify({'error': 'schedule_unavailable'}), 404
+        now = TIMETABLE_TIMEZONE.localize(datetime.datetime.combine(requested_date, datetime.datetime.now(TIMETABLE_TIMEZONE).time().replace(microsecond=0)))
+        live = _calculate_timetable_live(conn, class_id, now)
+        day = _calculate_timetable_day(conn, class_id, requested_date)
+    return jsonify(status='ok', class_id=class_id, date=requested_date.isoformat(), live=live, day=day, user_view={'live': live, 'day_plan': day.get('lessons')})
 
     raw_subjects = row.get('muted_subjects') if row else ''
     muted_subjects: List[str] = []
@@ -5464,6 +6498,95 @@ def _cors_preflight():
     return resp, 200
 
 # --- STUNDENPLAN / AKTUELLES_FACH ---
+@app.route('/api/timetable/live', methods=['GET'])
+def timetable_live():
+    try:
+        conn = get_connection()
+    except Exception:
+        return jsonify({'status': 'error', 'message': 'database_unavailable'}), 503
+    with closing(conn):
+        class_id, error_response = _resolve_timetable_class_id_from_request(conn)
+        if error_response:
+            return error_response
+        try:
+            if not _class_has_schedule(conn, class_id):
+                return jsonify({'error': 'schedule_unavailable'}), 404
+            now_param = request.args.get('now')
+            now_value = None
+            if now_param:
+                try:
+                    now_value = datetime.datetime.fromisoformat(now_param)
+                except ValueError:
+                    return jsonify(status='error', message='invalid_now'), 400
+            payload = _calculate_timetable_live(conn, class_id, now_value)
+        except mysql.connector.Error:
+            return jsonify({'status': 'error', 'message': 'database_unavailable'}), 503
+    return jsonify(payload)
+
+
+@app.route('/api/timetable/day', methods=['GET'])
+def timetable_day():
+    try:
+        conn = get_connection()
+    except Exception:
+        return jsonify({'status': 'error', 'message': 'database_unavailable'}), 503
+    with closing(conn):
+        class_id, error_response = _resolve_timetable_class_id_from_request(conn)
+        if error_response:
+            return error_response
+        requested_date = _parse_iso_date(request.args.get('date')) or datetime.datetime.now(TIMETABLE_TIMEZONE).date()
+        try:
+            if not _class_has_schedule(conn, class_id):
+                return jsonify({'error': 'schedule_unavailable'}), 404
+            day = _calculate_timetable_day(conn, class_id, requested_date)
+            next_day = _next_school_day(conn, class_id, requested_date)
+            next_plan = _calculate_timetable_day(conn, class_id, next_day) if next_day else None
+        except mysql.connector.Error:
+            return jsonify({'status': 'error', 'message': 'database_unavailable'}), 503
+    return jsonify(
+        {
+            'class_id': class_id,
+            'date': requested_date.isoformat(),
+            'day_status': day.get('day_status'),
+            'day_status_label': day.get('day_status_label'),
+            'notice': day.get('notice'),
+            'day_plan': day.get('lessons') or [],
+            'day': day,
+            'next_school_day': next_day.isoformat() if next_day else None,
+            'next_day_plan': (next_plan or {}).get('lessons') or [],
+            'next_day': next_plan,
+        }
+    )
+
+
+@app.route('/api/timetable/week', methods=['GET'])
+def timetable_week():
+    try:
+        conn = get_connection()
+    except Exception:
+        return jsonify({'status': 'error', 'message': 'database_unavailable'}), 503
+    with closing(conn):
+        class_id, error_response = _resolve_timetable_class_id_from_request(conn)
+        if error_response:
+            return error_response
+        requested_date = _parse_iso_date(request.args.get('date')) or datetime.datetime.now(TIMETABLE_TIMEZONE).date()
+        week_start = requested_date - datetime.timedelta(days=requested_date.weekday())
+        try:
+            if not _class_has_schedule(conn, class_id):
+                return jsonify({'error': 'schedule_unavailable'}), 404
+            days = [_calculate_timetable_day(conn, class_id, week_start + datetime.timedelta(days=offset)) for offset in range(5)]
+        except mysql.connector.Error:
+            return jsonify({'status': 'error', 'message': 'database_unavailable'}), 503
+    return jsonify(
+        {
+            'class_id': class_id,
+            'week_start': week_start.isoformat(),
+            'week_end': (week_start + datetime.timedelta(days=4)).isoformat(),
+            'days': days,
+        }
+    )
+
+
 @app.route('/stundenplan')
 @require_class_context
 def stundenplan():
@@ -5482,9 +6605,6 @@ def stundenplan():
 @app.route('/aktuelles_fach')
 @require_class_context
 def aktuelles_fach():
-    tz = pytz.timezone('Europe/Berlin')
-    now = datetime.datetime.now(tz)
-    tag = now.strftime('%A')
     class_id = g.get('active_class_id') or _get_session_class_id()
     try:
         conn = get_connection()
@@ -5494,70 +6614,16 @@ def aktuelles_fach():
         try:
             if not _class_has_schedule(conn, class_id):
                 return jsonify({'error': 'schedule_unavailable'}), 404
-            plan = _load_schedule_for_day(conn, class_id, tag)
+            live = _calculate_timetable_live(conn, class_id)
         except mysql.connector.Error:
             return jsonify({'status': 'error', 'message': 'database_unavailable'}), 503
-
-    current  = {
-        "fach": "Frei",
-        "verbleibend": "-",
-        "raum": "-",
-        "start": None,
-        "ende": None,
-        "verbleibende_sekunden": 0,
-        "gesamt_sekunden": 0,
-    }
-    next_cls = {"start":None,"fach":"-","raum":"-"}
-    def parse_time(value):
-        try:
-            parts = (value or '').split(':')
-            hour = int(parts[0])
-            minute = int(parts[1]) if len(parts) > 1 else 0
-        except (ValueError, IndexError):
-            return None
-        return now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-
-    for slot in plan:
-        start = parse_time(slot.get("start"))
-        ende  = parse_time(slot.get("end"))
-        if not start or not ende:
-            continue
-        if start <= now <= ende:
-            gesamt = int((ende - start).total_seconds())
-            verbleibend = max(int((ende - now).total_seconds()), 0)
-            m, s = divmod(verbleibend, 60)
-            current = {
-                "fach": slot.get("fach"),
-                "verbleibend": f"{m:02d}:{s:02d}",
-                "raum": slot.get("raum") or "-",
-                "start": start.strftime("%H:%M"),
-                "ende": ende.strftime("%H:%M"),
-                "verbleibende_sekunden": verbleibend,
-                "gesamt_sekunden": gesamt,
-            }
-        elif start > now and (slot.get("raum") or "-") != "-":
-            if next_cls["start"] is None or start<next_cls["start"]:
-                next_cls={"start":start,"fach":slot.get("fach"),"raum":slot.get("raum") or "-"}
-
-    next_start = f"{next_cls['start'].hour:02d}:{next_cls['start'].minute:02d}" if next_cls["start"] else "-"
-    response = {
-        **current,
-        "naechste_start": next_start,
-        "naechster_raum": next_cls["raum"],
-        "naechstes_fach": next_cls["fach"],
-    }
-    if next_cls["start"]:
-        response["naechste_start_iso"] = next_cls["start"].isoformat()
-    return jsonify(response)
+    return jsonify(_legacy_live_payload(live))
 
 
 @app.route('/tagesuebersicht')
 @require_class_context
 def tagesuebersicht():
-    tz = pytz.timezone('Europe/Berlin')
-    now = datetime.datetime.now(tz)
-    heute = now.strftime('%A')
-    morgen = (now + datetime.timedelta(days=1)).strftime('%A')
+    today = datetime.datetime.now(TIMETABLE_TIMEZONE).date()
     class_id = g.get('active_class_id') or _get_session_class_id()
     try:
         conn = get_connection()
@@ -5567,11 +6633,21 @@ def tagesuebersicht():
         try:
             if not _class_has_schedule(conn, class_id):
                 return jsonify({'error': 'schedule_unavailable'}), 404
-            heute_rows = _load_schedule_for_day(conn, class_id, heute)
-            morgen_rows = _load_schedule_for_day(conn, class_id, morgen)
+            day = _calculate_timetable_day(conn, class_id, today)
+            next_day = _next_school_day(conn, class_id, today)
+            next_plan = _calculate_timetable_day(conn, class_id, next_day) if next_day else None
         except mysql.connector.Error:
             return jsonify({'status': 'error', 'message': 'database_unavailable'}), 503
-        return jsonify({heute: heute_rows, morgen: morgen_rows})
+        return jsonify(
+            _legacy_day_payload(
+                {
+                    'date': today.isoformat(),
+                    'day_plan': day.get('lessons') or [],
+                    'next_school_day': next_day.isoformat() if next_day else None,
+                    'next_day_plan': (next_plan or {}).get('lessons') or [],
+                }
+            )
+        )
 
 # --- EINTRAG HINZUFÜGEN ---
 @app.route('/add_entry', methods=['POST', 'OPTIONS'])
