@@ -1411,6 +1411,189 @@ def admin_schedule_import():
     return jsonify(status='ok', inserted=inserted, import_hash=import_hash)
 
 
+def _load_exam_import_payload_from_bytes(raw: bytes) -> Dict[str, Any]:
+    try:
+        return json.loads(raw.decode('utf-8-sig'))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError('invalid_json') from exc
+
+
+def _normalize_exam_import_entries(payload: Any, fallback_class_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    if isinstance(payload, list):
+        entries = payload
+        top_level_class = fallback_class_id
+    elif isinstance(payload, dict):
+        entries = payload.get('entries')
+        top_level_class = payload.get('class_id') or payload.get('class') or fallback_class_id
+    else:
+        raise ValueError('invalid_payload')
+
+    if not isinstance(entries, list) or not entries:
+        raise ValueError('entries_required')
+
+    normalized: List[Dict[str, Any]] = []
+    for index, item in enumerate(entries, start=1):
+        if not isinstance(item, dict):
+            raise ValueError(f'entry_{index}_invalid')
+
+        typ = str(item.get('typ') or 'pruefung').strip()
+        if typ != 'pruefung':
+            raise ValueError(f'entry_{index}_invalid_type')
+
+        class_values = item.get('class_ids')
+        class_id = item.get('class_id') or item.get('class') or top_level_class
+        if class_values is None:
+            if not class_id:
+                raise ValueError(f'entry_{index}_class_id_required')
+            class_values = [class_id]
+
+        try:
+            class_ids = _normalize_entry_class_id_list(class_values)
+        except ValueError as exc:
+            raise ValueError(f'entry_{index}_invalid_class_id') from exc
+        if not class_ids:
+            raise ValueError(f'entry_{index}_class_id_required')
+
+        datum_raw = item.get('datum') or item.get('date')
+        datum = _parse_iso_date(datum_raw)
+        if datum is None:
+            raise ValueError(f'entry_{index}_invalid_date')
+
+        enddatum_raw = item.get('enddatum') or item.get('end_date') or datum.isoformat()
+        enddatum = _parse_iso_date(enddatum_raw)
+        if enddatum is None or enddatum < datum:
+            raise ValueError(f'entry_{index}_invalid_end_date')
+
+        startzeit = item.get('startzeit') or item.get('start_time') or None
+        endzeit = item.get('endzeit') or item.get('end_time') or None
+
+        def normalize_time(value: Any) -> Optional[str]:
+            if value in (None, ''):
+                return None
+            text = str(value).strip()
+            if not text:
+                return None
+            if len(text) == 5:
+                text = f'{text}:00'
+            return text[:8]
+
+        normalized.append({
+            'class_ids': class_ids,
+            'beschreibung': str(item.get('beschreibung') or item.get('description') or '').strip(),
+            'datum': datum.isoformat(),
+            'enddatum': enddatum.isoformat(),
+            'startzeit': normalize_time(startzeit),
+            'endzeit': normalize_time(endzeit),
+            'typ': 'pruefung',
+            'fach': str(item.get('fach') or item.get('subject') or '').strip(),
+        })
+
+    return normalized
+
+
+@app.route('/api/admin/exam-import', methods=['POST', 'OPTIONS'])
+@require_role('admin')
+def admin_exam_import():
+    if request.method == 'OPTIONS':
+        return _cors_preflight()
+
+    fallback_class_id = (
+        request.args.get('class')
+        or request.args.get('class_id')
+        or request.form.get('class')
+        or request.form.get('class_id')
+    )
+
+    try:
+        if 'file' in request.files and request.files['file'] and request.files['file'].filename:
+            payload = _load_exam_import_payload_from_bytes(request.files['file'].read())
+        else:
+            payload = request.get_json(silent=True)
+            if payload is None:
+                text_payload = request.form.get('exam_import') or request.form.get('entries')
+                if not text_payload:
+                    raise ValueError('payload_required')
+                payload = json.loads(text_payload)
+
+        entries = _normalize_exam_import_entries(payload, fallback_class_id)
+    except json.JSONDecodeError:
+        return jsonify(status='error', message='invalid_json'), 400
+    except ValueError as exc:
+        return jsonify(status='error', message=str(exc)), 400
+
+    if not entries:
+        return jsonify(status='error', message='entries_required'), 400
+
+    if HWM_DEBUG_MODE:
+        created = sum(len(entry['class_ids']) for entry in entries)
+        return jsonify(status='ok', imported=len(entries), created=created, debug=True)
+
+    user_id = int(session.get('user_id') or 0)
+    conn = get_connection()
+    cur = conn.cursor()
+    imported = 0
+    created = 0
+    try:
+        for entry in entries:
+            class_ids = entry['class_ids']
+            first_class = class_ids[0]
+            cur.execute(
+                """
+                INSERT INTO eintraege (class_id, beschreibung, datum, enddatum, startzeit, endzeit, typ, fach, owner_user_id, is_private)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """,
+                (
+                    first_class,
+                    entry['beschreibung'],
+                    entry['datum'],
+                    entry['enddatum'],
+                    entry['startzeit'],
+                    entry['endzeit'],
+                    entry['typ'],
+                    entry['fach'],
+                    user_id or None,
+                    0,
+                ),
+            )
+            entry_id = cur.lastrowid
+            created += 1
+
+            for extra_class in class_ids[1:]:
+                cur.execute(
+                    """
+                    INSERT INTO eintraege (id, class_id, beschreibung, datum, enddatum, startzeit, endzeit, typ, fach, owner_user_id, is_private)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    """,
+                    (
+                        entry_id,
+                        extra_class,
+                        entry['beschreibung'],
+                        entry['datum'],
+                        entry['enddatum'],
+                        entry['startzeit'],
+                        entry['endzeit'],
+                        entry['typ'],
+                        entry['fach'],
+                        user_id or None,
+                        0,
+                    ),
+                )
+                created += 1
+            imported += 1
+
+        conn.commit()
+        _log_user_event('exam_import', imported=imported, created=created)
+    except Exception as exc:
+        conn.rollback()
+        app.logger.exception('Exam import failed')
+        return jsonify(status='error', message=str(exc)), 500
+    finally:
+        cur.close()
+        conn.close()
+
+    return jsonify(status='ok', imported=imported, created=created)
+
+
 def _load_admin_user(conn) -> Optional[Dict[str, object]]:
     cursor = conn.cursor(dictionary=True)
     try:

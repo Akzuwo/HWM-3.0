@@ -13,3 +13,13 @@ __pycache__/
 !.env.example
 calendar-*-debug-*.png
 calendar-hwm3-*.png
+
+# PDF-to-JSON parser working directories
+tools/pdf to json parser/schedule importer/input/*
+tools/pdf to json parser/schedule importer/output/*
+tools/pdf to json parser/exam importer/input/*
+tools/pdf to json parser/exam importer/output/*
+!tools/pdf to json parser/schedule importer/input/.gitkeep
+!tools/pdf to json parser/schedule importer/output/.gitkeep
+!tools/pdf to json parser/exam importer/input/.gitkeep
+!tools/pdf to json parser/exam importer/output/.gitkeep

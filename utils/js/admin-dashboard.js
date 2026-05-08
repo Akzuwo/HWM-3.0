@@ -24,6 +24,7 @@ const TRANSLATIONS = {
       users: 'Neuen Nutzer anlegen',
       classes: 'Neue Klasse anlegen',
       schedules: 'Stundenplan importieren',
+      examImport: 'Prüfungen importieren',
     },
     buttons: {
       edit: 'Bearbeiten',
@@ -93,6 +94,7 @@ const TRANSLATIONS = {
       fileRequired: 'Bitte eine Datei auswählen.',
       classIdentifierRequired: 'Bitte eine Klassen-ID oder einen Slug angeben.',
       scheduleImported: (count, hash) => `${count} Stunden importiert (Hash: ${hash}).`,
+      examImported: (count, created) => `${count} Prüfungen importiert (${created} Einträge erstellt).`,
     },
     logs: {
       title: 'API-Protokolle',
@@ -122,6 +124,7 @@ const TRANSLATIONS = {
       users: 'Create user',
       classes: 'Create class',
       schedules: 'Import schedule',
+      examImport: 'Import exams',
     },
     buttons: {
       edit: 'Edit',
@@ -191,6 +194,7 @@ const TRANSLATIONS = {
       fileRequired: 'Please choose a file.',
       classIdentifierRequired: 'Please provide a class ID or slug.',
       scheduleImported: (count, hash) => `Imported ${count} lessons (hash: ${hash}).`,
+      examImported: (count, created) => `Imported ${count} exams (${created} entries created).`,
     },
     logs: {
       title: 'API logs',
@@ -220,6 +224,7 @@ const TRANSLATIONS = {
       users: 'Créer un utilisateur',
       classes: 'Créer une classe',
       schedules: 'Importer un horaire',
+      examImport: 'Importer des examens',
     },
     buttons: {
       edit: 'Modifier',
@@ -289,6 +294,7 @@ const TRANSLATIONS = {
       fileRequired: 'Veuillez sélectionner un fichier.',
       classIdentifierRequired: 'Veuillez indiquer un ID ou un slug de classe.',
       scheduleImported: (count, hash) => `${count} cours importés (hash : ${hash}).`,
+      examImported: (count, created) => `${count} examens importés (${created} entrées créées).`,
     },
     logs: {
       title: 'Journaux de l’API',
@@ -318,6 +324,7 @@ const TRANSLATIONS = {
       users: 'Crea utente',
       classes: 'Crea classe',
       schedules: 'Importa orario',
+      examImport: 'Importa verifiche',
     },
     buttons: {
       edit: 'Modifica',
@@ -387,6 +394,7 @@ const TRANSLATIONS = {
       fileRequired: 'Seleziona un file.',
       classIdentifierRequired: 'Indica un ID o uno slug di classe.',
       scheduleImported: (count, hash) => `${count} lezioni importate (hash: ${hash}).`,
+      examImported: (count, created) => `${count} verifiche importate (${created} voci create).`,
     },
     logs: {
       title: 'Log API',
@@ -731,6 +739,7 @@ function buildDashboard(root) {
   logsControls.append(downloadLogsButton);
 
   const createButton = createActionButton(t.create.users);
+  const examImportButton = createActionButton(t.create.examImport || 'Prüfungen importieren', 'ghost');
   sectionActions.append(createButton);
 
   content.append(
@@ -754,6 +763,16 @@ function buildDashboard(root) {
       required: true,
       helpText: t.help.classIdentifier,
     },
+    {
+      name: 'file',
+      type: 'file',
+      label: t.fields.file,
+      required: true,
+      accept: 'application/json,.json',
+    },
+  ];
+
+  const examImportFields = [
     {
       name: 'file',
       type: 'file',
@@ -925,6 +944,8 @@ function buildDashboard(root) {
     state.authorized = allowed;
     createButton.disabled = !allowed;
     createButton.setAttribute('aria-disabled', String(!allowed));
+    examImportButton.disabled = !allowed;
+    examImportButton.setAttribute('aria-disabled', String(!allowed));
     downloadLogsButton.disabled = !allowed;
     downloadLogsButton.setAttribute('aria-disabled', String(!allowed));
     logsRefreshButton.disabled = !allowed || state.logs.loading;
@@ -1438,6 +1459,10 @@ function buildDashboard(root) {
     const resource = resources[section.key];
     createButton.textContent = t.create[section.key];
     sectionActions.append(createButton);
+    if (resource.key === 'schedules') {
+      examImportButton.textContent = t.create.examImport || 'Prüfungen importieren';
+      sectionActions.append(examImportButton);
+    }
     sectionControls.hidden = false;
     tableWrapper.hidden = false;
     pagination.element.hidden = false;
@@ -1692,6 +1717,61 @@ function buildDashboard(root) {
     });
   }
 
+  function openExamImportDialog() {
+    const dialog = createDialog({
+      title: t.create.examImport || 'Prüfungen importieren',
+      confirmLabel: t.buttons.import,
+      cancelLabel: t.buttons.cancel,
+    });
+    const form = createForm(examImportFields);
+    dialog.setContent(form.element);
+    dialog.open();
+    form.focusFirst();
+    dialog.onConfirm(async () => {
+      const values = form.getValues();
+      const file = values.file || null;
+      if (!file) {
+        throw new Error(t.messages.fileRequired);
+      }
+      const formData = new FormData();
+      formData.append('file', file, file.name || 'exams.json');
+      let response;
+      try {
+        response = await fetch(resolveUrl('/api/admin/exam-import'), {
+          method: 'POST',
+          credentials: 'include',
+          body: formData,
+        });
+      } catch (error) {
+        throw new Error(error instanceof Error ? error.message : String(error));
+      }
+      let payload = {};
+      try {
+        payload = await response.json();
+      } catch (error) {
+        payload = {};
+      }
+      if (response.status === 401 || response.status === 403) {
+        handleAuthFailure(response.status);
+        throw new Error(t.messages.unauthorized);
+      }
+      if (!response.ok) {
+        const message = payload.message || response.statusText || t.messages.unknownError;
+        throw new Error(message);
+      }
+      if (payload && typeof payload.status === 'string' && payload.status !== 'ok') {
+        const message = payload.message || t.messages.unknownError;
+        throw new Error(message);
+      }
+      const imported = payload.imported ?? 0;
+      const created = payload.created ?? imported;
+      const message = typeof t.messages.examImported === 'function'
+        ? t.messages.examImported(imported, created)
+        : `${imported} Prüfungen importiert.`;
+      showMessage('success', message);
+    });
+  }
+
   function refreshAfter(action, resourceKey) {
     switch (action) {
       case 'create':
@@ -1868,6 +1948,14 @@ function buildDashboard(root) {
       ensureClassesLoaded().catch(() => {});
     }
     onResourceChanged();
+  });
+
+  examImportButton.addEventListener('click', () => {
+    if (!state.authorized) {
+      showMessage('error', t.messages.unauthorized);
+      return;
+    }
+    openExamImportDialog();
   });
 }
 
