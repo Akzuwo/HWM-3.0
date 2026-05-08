@@ -49,6 +49,7 @@ class FakeCursor:
         todo_subtasks: List[Dict[str, object]] = self.storage.setdefault('todo_subtasks', [])
         password_resets: List[Dict[str, object]] = self.storage.setdefault('password_resets', [])
         weekly_preview_cache: List[Dict[str, object]] = self.storage.setdefault('weekly_preview_cache', [])
+        encrypted_grade_vaults: Dict[int, Dict[str, object]] = self.storage.setdefault('encrypted_grade_vaults', {})
 
         if normalized.startswith("select count(*) as total from users"):
             self._prepare_rows([
@@ -1479,6 +1480,63 @@ class FakeCursor:
             self.rowcount = 1
             return
 
+        if normalized.startswith("select vault_json, revision, updated_at from encrypted_grade_vaults where user_id=%s"):
+            user_id = int(params[0])
+            row = encrypted_grade_vaults.get(user_id)
+            if not row:
+                self._rows = []
+                return
+            self._prepare_rows(
+                [
+                    {
+                        'vault_json': row.get('vault_json'),
+                        'revision': row.get('revision'),
+                        'updated_at': row.get('updated_at'),
+                    }
+                ],
+                ['vault_json', 'revision', 'updated_at'],
+            )
+            return
+
+        if normalized.startswith("select revision from encrypted_grade_vaults where user_id=%s"):
+            user_id = int(params[0])
+            row = encrypted_grade_vaults.get(user_id)
+            if not row:
+                self._rows = []
+                return
+            self._prepare_rows([{'revision': row.get('revision')}], ['revision'])
+            return
+
+        if normalized.startswith("delete from encrypted_grade_vaults where user_id=%s"):
+            user_id = int(params[0])
+            existed = user_id in encrypted_grade_vaults
+            encrypted_grade_vaults.pop(user_id, None)
+            self.rowcount = 1 if existed else 0
+            return
+
+        if normalized.startswith("update encrypted_grade_vaults set vault_json=%s, revision=%s, updated_at=%s where user_id=%s"):
+            vault_json, revision, updated_at, user_id = params
+            user_id = int(user_id)
+            row = encrypted_grade_vaults.get(user_id)
+            if row:
+                row['vault_json'] = vault_json
+                row['revision'] = revision
+                row['updated_at'] = updated_at
+                self.rowcount = 1
+            return
+
+        if normalized.startswith("insert into encrypted_grade_vaults (user_id, vault_json, revision, created_at, updated_at)"):
+            user_id, vault_json, revision, created_at, updated_at = params
+            encrypted_grade_vaults[int(user_id)] = {
+                'user_id': int(user_id),
+                'vault_json': vault_json,
+                'revision': revision,
+                'created_at': created_at,
+                'updated_at': updated_at,
+            }
+            self.rowcount = 1
+            return
+
         self._rows = []
 
     def executemany(self, query: str, param_sequence) -> None:  # pragma: no cover - shim
@@ -1582,6 +1640,7 @@ def app_client(monkeypatch):
         'verifications': [],
         'password_resets': [],
         'weekly_preview_cache': [],
+        'encrypted_grade_vaults': {},
         'next_ids': {
             'users': 2,
             'classes': 2,

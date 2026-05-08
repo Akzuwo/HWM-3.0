@@ -1915,6 +1915,35 @@ def ensure_calendar_preferences_table():
         conn.close()
 
 
+def ensure_encrypted_grade_vaults_table():
+    try:
+        conn = get_connection()
+    except Exception:
+        return
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS encrypted_grade_vaults (
+                user_id INT PRIMARY KEY,
+                vault_json MEDIUMTEXT NOT NULL,
+                revision INT NOT NULL DEFAULT 1,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME NOT NULL,
+                CONSTRAINT fk_encrypted_grade_vaults_user FOREIGN KEY (user_id)
+                    REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+        )
+        conn.commit()
+    except mysql.connector.Error:
+        conn.rollback()
+        raise
+    finally:
+        cur.close()
+        conn.close()
+
+
 # Tabelle für den Stundenplan sicherstellen
 def ensure_stundenplan_table():
     try:
@@ -2200,6 +2229,7 @@ def ensure_timetable_feature_tables():
 ensure_stundenplan_table()
 ensure_entries_table()
 ensure_calendar_preferences_table()
+ensure_encrypted_grade_vaults_table()
 ensure_email_verifications_table()
 ensure_password_resets_table()
 ensure_weekly_preview_cache_table()
@@ -3619,6 +3649,139 @@ def _serialize_weekly_time(value: object) -> str:
         return value.strftime('%H:%M:%S')
     text = str(value).strip()
     return text[:8] if text else ''
+
+
+def _serialize_vault_updated_at(value: object) -> Optional[str]:
+    if value is None:
+        return None
+    return _serialize_value(value)
+
+
+def _validate_encrypted_grade_vault_payload(vault: object) -> bool:
+    if not isinstance(vault, dict):
+        return False
+    if vault.get('version') != 1:
+        return False
+    if vault.get('algorithm') != 'AES-GCM':
+        return False
+    if vault.get('kdf') != 'PBKDF2':
+        return False
+    iterations = vault.get('iterations')
+    if not isinstance(iterations, int) or iterations < 100000:
+        return False
+    for field_name in ('salt', 'iv', 'ciphertext'):
+        value = vault.get(field_name)
+        if not isinstance(value, str) or not value.strip():
+            return False
+    return True
+
+
+@app.route('/api/grades/vault', methods=['GET', 'PUT', 'DELETE', 'OPTIONS'])
+@require_authenticated
+def encrypted_grade_vault():
+    if request.method == 'OPTIONS':
+        return _cors_preflight()
+
+    user_id = int(session.get('user_id') or 0)
+    if user_id <= 0:
+        return jsonify(status='error', message='unauthorized'), 401
+
+    try:
+        conn = get_connection()
+    except Exception:
+        return jsonify(status='error', message='database_unavailable'), 503
+
+    with closing(conn):
+        if request.method == 'GET':
+            cursor = conn.cursor(dictionary=True)
+            try:
+                cursor.execute(
+                    "SELECT vault_json, revision, updated_at FROM encrypted_grade_vaults WHERE user_id=%s",
+                    (user_id,),
+                )
+                row = cursor.fetchone()
+            finally:
+                cursor.close()
+            if not row:
+                return jsonify(status='ok', data={'vault_json': None, 'revision': 0, 'updated_at': None})
+            return jsonify(
+                status='ok',
+                data={
+                    'vault_json': row.get('vault_json'),
+                    'revision': int(row.get('revision') or 0),
+                    'updated_at': _serialize_vault_updated_at(row.get('updated_at')),
+                },
+            )
+
+        if request.method == 'DELETE':
+            cursor = conn.cursor()
+            try:
+                cursor.execute("DELETE FROM encrypted_grade_vaults WHERE user_id=%s", (user_id,))
+                conn.commit()
+            except mysql.connector.Error:
+                conn.rollback()
+                return jsonify(status='error', message='database_unavailable'), 503
+            finally:
+                cursor.close()
+            return jsonify(status='ok')
+
+        data = request.get_json(silent=True) or {}
+        vault = data.get('vault_json')
+        base_revision = data.get('baseRevision')
+        if not isinstance(base_revision, int) or base_revision < 0:
+            return jsonify(status='error', message='invalid_base_revision'), 400
+        if not _validate_encrypted_grade_vault_payload(vault):
+            return jsonify(status='error', message='invalid_vault'), 400
+
+        vault_json = json.dumps(vault, ensure_ascii=False, separators=(',', ':'))
+        now = datetime.datetime.utcnow()
+        cursor = conn.cursor(dictionary=True)
+        try:
+            cursor.execute(
+                "SELECT revision FROM encrypted_grade_vaults WHERE user_id=%s",
+                (user_id,),
+            )
+            row = cursor.fetchone()
+            current_revision = int(row.get('revision') or 0) if row else 0
+            if base_revision != current_revision:
+                return jsonify(
+                    status='error',
+                    message='revision_conflict',
+                    currentRevision=current_revision,
+                ), 409
+
+            next_revision = current_revision + 1
+            if row:
+                cursor.execute(
+                    """
+                    UPDATE encrypted_grade_vaults
+                    SET vault_json=%s, revision=%s, updated_at=%s
+                    WHERE user_id=%s
+                    """,
+                    (vault_json, next_revision, now, user_id),
+                )
+            else:
+                cursor.execute(
+                    """
+                    INSERT INTO encrypted_grade_vaults (user_id, vault_json, revision, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s)
+                    """,
+                    (user_id, vault_json, next_revision, now, now),
+                )
+            conn.commit()
+        except mysql.connector.Error:
+            conn.rollback()
+            return jsonify(status='error', message='database_unavailable'), 503
+        finally:
+            cursor.close()
+
+        return jsonify(
+            status='ok',
+            data={
+                'revision': next_revision,
+                'updated_at': _serialize_vault_updated_at(now),
+            },
+        )
 
 
 def _collect_weekly_preview_entries(conn, class_id: str, user_id: int, start_date: datetime.date, end_date: datetime.date, include_todos: bool) -> List[Dict[str, str]]:
