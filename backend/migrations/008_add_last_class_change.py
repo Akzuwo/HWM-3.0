@@ -11,9 +11,7 @@ from config import get_db_config
 
 def upgrade():
     cfg = get_db_config()
-    conn = mysql.connector.connect(
-        host=cfg['host'], user=cfg['user'], password=cfg['password'], database=cfg['database']
-    )
+    conn = mysql.connector.connect(**cfg)
     try:
         with closing(conn):
             cursor = conn.cursor()
@@ -34,9 +32,7 @@ def upgrade():
 
 def downgrade():
     cfg = get_db_config()
-    conn = mysql.connector.connect(
-        host=cfg['host'], user=cfg['user'], password=cfg['password'], database=cfg['database']
-    )
+    conn = mysql.connector.connect(**cfg)
     try:
         with closing(conn):
             cursor = conn.cursor()

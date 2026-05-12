@@ -1,12 +1,4 @@
-function resolveApiBase() {
-  if (typeof window !== 'undefined' && typeof window.hmResolveApiBase === 'function') {
-    return window.hmResolveApiBase();
-  }
-  if (typeof window !== 'undefined' && window.__HM_RESOLVED_API_BASE__) {
-    return window.__HM_RESOLVED_API_BASE__;
-  }
-  return 'https://hwm-api.akzuwo.ch';
-}
+import { resolveApiBase } from './api-client.js';
 
 function resolveUrl(path) {
   const base = resolveApiBase().replace(/\/+$/, '');

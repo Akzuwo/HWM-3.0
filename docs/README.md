@@ -44,49 +44,62 @@ pip install -r backend/requirements-dev.txt
 
 ### Konfiguration
 
-Das Backend bezieht sämtliche Secrets aus Umgebungsvariablen oder dem Secrets-Verzeichnis. Für lokale Tests empfiehlt sich folgende Minimal-Konfiguration:
+Das Backend lädt seine Konfiguration aus `backend/.env` und aus echten Umgebungsvariablen. Die Datenbankverbindung kommt vollständig aus diesen Werten:
 
 ```bash
-export DB_HOST=127.0.0.1
-export DB_USER=hwm
-export DB_PASSWORD=hwm
-export DB_NAME=hwm
-export DB_PORT=3306
-
-export LOGIN_RATE_LIMIT_WINDOW=300
-export LOGIN_RATE_LIMIT_MAX=10
-export VERIFY_RATE_LIMIT_WINDOW=3600
-export VERIFY_RATE_LIMIT_MAX=5
-export PASSWORD_RESET_REQUEST_WINDOW=3600
-export PASSWORD_RESET_REQUEST_MAX=5
-export PASSWORD_RESET_VERIFY_WINDOW=3600
-export PASSWORD_RESET_VERIFY_MAX=10
-export PASSWORD_RESET_CODE_LIFETIME_SECONDS=900
+DB_HOST=<externer-db-host>
+DB_PORT=3306
+DB_USER=<db-user>
+DB_PASSWORD=<db-password>
+DB_NAME=<db-name>
 ```
 
-Zusätzlich muss der Sitzungs-Secret-Schlüssel als Datei bereitstehen:
+Lege lokal zuerst `backend/.env` aus [`backend/.env.example`](../backend/.env.example) an und trage die externe aktuelle Datenbank ein. Fehlende `DB_*`-Werte stoppen den Backend-Start mit einer verständlichen Fehlermeldung. Echte Secrets gehören nur in `.env` oder Deployment-Secrets und dürfen nicht committed werden.
+Für lokale Browser-Tests sollte `HWM_LOCAL_DEV=1` gesetzt bleiben; dadurch erlaubt das Backend localhost-CORS und unsichere Session-Cookies über HTTP, ohne den Auth-Debugmodus zu aktivieren. `HWM_DEBUG_MODE=1` ist nur für gezielte Debug-Flows gedacht.
+
+Für das Frontend liegt die Beispielkonfiguration in [`frontend/.env.example`](../frontend/.env.example). Lege lokal `frontend/.env` an:
 
 ```bash
-sudo mkdir -p /etc/secrets
-echo "dev-session-secret" | sudo tee /etc/secrets/hwm-session-secret > /dev/null
+VITE_API_BASE_URL=http://localhost:5000
 ```
 
-### Anwendung starten
+Ohne expliziten Wert verwendet Vite im Development-Modus automatisch `http://localhost:5000`; Production-Builds verwenden weiterhin `https://hwm-api.akzuwo.ch`.
 
-Für lokale Tests kann das Flask-Backend direkt ausgeführt werden:
+### Anwendung lokal starten
+
+Backend:
 
 ```bash
-export FLASK_APP=backend.app
-flask run --host=0.0.0.0 --port=5000 --debug
+cd HWM-3.0
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r backend/requirements.txt
+python backend/app.py
 ```
 
-Alternativ lässt sich der Produktions-Stack über Gunicorn starten:
+Alternativ lässt sich der Stack wie bisher über Gunicorn starten:
 
 ```bash
 gunicorn --chdir backend app:app
 ```
 
-Das Backend liefert die statischen Sprachversionen aus den Verzeichnissen `de/`, `en/`, `fr/` und `it/`. Während der Entwicklung können Änderungen an HTML/JS-Dateien ohne erneuten Build getestet werden.
+Frontend:
+
+```bash
+cd HWM-3.0
+npm install
+npm run dev
+```
+
+Damit läuft das Frontend lokal gegen `http://localhost:5000`, während das lokal gestartete Backend die externe Datenbank aus `backend/.env` verwendet. Es wird keine lokale Datenbank, kein SQLite und kein Dummy-Storage benötigt.
+
+Auf Windows kann alternativ das lokale Hilfsskript gestartet werden:
+
+```powershell
+.\start-local.ps1
+```
+
+Dieses Skript ist in `.gitignore` eingetragen, weil es nur für lokale Maschinen gedacht ist.
 
 ## Tests & Qualitätssicherung
 
@@ -96,7 +109,7 @@ Unit- und Integrationstests befinden sich im Verzeichnis `backend/tests`. Nach A
 pytest backend/tests
 ```
 
-Das Test-Setup mockt notwendige Secrets (z. B. `hwm-session-secret`) und stellt Dummy-Datenbanken bereit, sodass keine externe Infrastruktur benötigt wird.
+Das Test-Setup stellt Dummy-Datenbanken bereit, sodass keine externe Infrastruktur benötigt wird.
 
 ### Manuelle QA (Passwort-Reset-Flow)
 

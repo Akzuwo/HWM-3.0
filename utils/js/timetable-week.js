@@ -1,7 +1,6 @@
-const API_BASE_URL =
-  (typeof window !== 'undefined' && typeof window.hmResolveApiBase === 'function')
-    ? window.hmResolveApiBase()
-    : 'https://hwm-api.akzuwo.ch';
+import { resolveApiBase } from './api-client.js';
+
+const API_BASE_URL = resolveApiBase();
 
 const locale = window.hmI18n ? window.hmI18n.getLocale() : 'de-CH';
 let anchorDate = new Date();

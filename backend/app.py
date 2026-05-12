@@ -9,6 +9,7 @@ import html
 import traceback
 import uuid
 import hashlib
+import secrets as pysecrets
 import urllib.request
 import urllib.error
 from collections import OrderedDict, deque
@@ -40,22 +41,18 @@ from schedule_importer import (
 # ---------- APP INITIALISIEREN ----------
 HWM_DEBUG_MODE = (os.getenv('HWM_DEBUG_MODE', '').strip().lower() in {'1', 'true', 'yes', 'on', 'debug'})
 
+HWM_LOCAL_DEV = (os.getenv('HWM_LOCAL_DEV', '').strip().lower() in {'1', 'true', 'yes', 'on'})
+
 app = Flask(__name__, static_url_path="/")
 
 # Session‐Cookies auch cross‐site erlauben
 app.config.update(
-    SESSION_COOKIE_SAMESITE="Lax" if HWM_DEBUG_MODE else "None",
-    SESSION_COOKIE_SECURE=not HWM_DEBUG_MODE
+    SESSION_COOKIE_SAMESITE="Lax" if (HWM_DEBUG_MODE or HWM_LOCAL_DEV) else "None",
+    SESSION_COOKIE_SECURE=not (HWM_DEBUG_MODE or HWM_LOCAL_DEV)
 )
 
-# Secrets laden
-try:
-    with open('/etc/secrets/hwm-session-secret', encoding='utf-8') as f:
-        app.secret_key = f.read().strip()
-except FileNotFoundError:
-    if not HWM_DEBUG_MODE:
-        raise
-    app.secret_key = os.getenv('HWM_DEBUG_SESSION_SECRET', 'hwm-local-debug-session')
+app.secret_key = pysecrets.token_hex(32)
+app.logger.info('Using an ephemeral Flask session key for this process.')
 
 # ---------- CORS ----------
 ALLOWED_CORS_ORIGINS = [
@@ -68,7 +65,7 @@ ALLOWED_CORS_ORIGIN_PATTERNS = [
     "https://*.homework-manager.pages.dev",
     "https://*.hwm-2-preview.pages.dev"
 ]
-if HWM_DEBUG_MODE:
+if HWM_DEBUG_MODE or HWM_LOCAL_DEV:
     ALLOWED_CORS_ORIGINS.extend([
         "http://localhost:5173",
         "http://127.0.0.1:5173",
@@ -368,17 +365,31 @@ CORS(
     allow_headers=["Content-Type", "X-Role"]
 )
 # ---------- DATABASE POOL ----------
-if HWM_DEBUG_MODE:
-    DB_CONFIG = {}
-    pool = None
-else:
+def _safe_db_config_for_logs(config: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "host": config.get("host"),
+        "port": config.get("port"),
+        "user": config.get("user"),
+        "database": config.get("database"),
+    }
+
+
+try:
     DB_CONFIG = get_db_config()
     pool = pooling.MySQLConnectionPool(pool_name="mypool", pool_size=5, pool_reset_session=True, **DB_CONFIG)
+except RuntimeError:
+    app.logger.exception("Backend configuration is incomplete. Check backend/.env for required DB_* values.")
+    raise
+except mysql.connector.Error as exc:
+    app.logger.error(
+        "Failed to initialise database pool with config=%s: %s",
+        _safe_db_config_for_logs(locals().get("DB_CONFIG", {})),
+        exc,
+    )
+    raise RuntimeError("Database connection could not be initialised. Check DB_HOST, DB_PORT, DB_USER and DB_NAME.") from exc
 
 
 def get_connection():
-    if pool is None:
-        raise RuntimeError("database_unavailable_in_debug_mode")
     return pool.get_connection()
 
 

@@ -7,19 +7,15 @@ import os
 import pytz
 import mysql.connector
 from mysql.connector import pooling
+from config import get_db_config
 
 
 app = Flask(__name__, static_url_path="/")
 CORS(app)
 
 # ---------- KONFIGURATION ----------
-DB_CONFIG = {
-    "host": "mc-mysql01.mc-host24.de",
-    "user": "u4203_Mtc42FNhxN",             # ← hier anpassen
-    "password": "nA6U=8ecQBe@vli@SKXN9rK9",     # ← hier anpassen
-    "database": "s4203_reports",   # ← hier anpassen
-    "port": 3306
-}
+# Echte Zugangsdaten gehoeren ausschliesslich in backend/.env.
+DB_CONFIG = get_db_config()
 
 # ---------- CONNECTION POOL ----------
 pool = pooling.MySQLConnectionPool(

@@ -1,3 +1,5 @@
+import { apiFetch, installApiBaseGlobals } from './api-client.js';
+
 // LOGIN & SESSION MANAGEMENT
 const authT = window.hmI18n ? window.hmI18n.scope('auth') : (key, fallback) => fallback;
 
@@ -99,45 +101,7 @@ const LOGIN_TEXT = {
     close: authT('close', 'Close')
 };
 
-function resolveHomeworkApiBase() {
-    const productionBase = 'https://hwm-api.akzuwo.ch';
-    const envBase = import.meta.env?.VITE_HWM_API_BASE;
-    const envDebug = String(import.meta.env?.VITE_HWM_DEBUG_API || '').toLowerCase();
-    let debugEnabled = envDebug === '1' || envDebug === 'true' || envDebug === 'yes' || envDebug === 'on';
-    if (typeof window !== 'undefined') {
-        const params = new URLSearchParams(window.location.search || '');
-        if (params.has('hm_debug')) {
-            debugEnabled = !['0', 'false', 'off', 'no'].includes(String(params.get('hm_debug') || '').toLowerCase());
-            try {
-                window.localStorage.setItem('hm.debugApi', debugEnabled ? 'true' : 'false');
-            } catch (error) {
-                // localStorage may be unavailable in private browsing contexts.
-            }
-        } else {
-            try {
-                debugEnabled = debugEnabled || window.localStorage.getItem('hm.debugApi') === 'true';
-            } catch (error) {
-                // Ignore unavailable localStorage.
-            }
-        }
-    }
-    const base = (envBase && String(envBase).trim()) || (debugEnabled ? 'http://127.0.0.1:5000' : productionBase);
-    return {
-        base: base.replace(/\/+$/, ''),
-        debugEnabled: debugEnabled || String(base).includes('127.0.0.1') || String(base).includes('localhost')
-    };
-}
-
-const API_BASE = (() => {
-    const resolved = resolveHomeworkApiBase();
-    const base = resolved.base;
-    if (typeof window !== 'undefined') {
-        window.__HM_RESOLVED_API_BASE__ = base;
-        window.__HM_API_DEBUG_MODE__ = resolved.debugEnabled;
-        window.hmResolveApiBase = () => base;
-    }
-    return base;
-})();
+const API_BASE = installApiBaseGlobals();
 
 const AUTH_API = {
     login: `${API_BASE}/api/auth/login`,
@@ -379,14 +343,6 @@ function getAuthSnapshot() {
     };
 }
 
-function resolveApiUrl(path) {
-    if (/^https?:\/\//i.test(path)) {
-        return path;
-    }
-    const suffix = String(path || '').startsWith('/') ? path : `/${path}`;
-    return `${API_BASE}${suffix}`;
-}
-
 async function hmApiFetch(path, options = {}) {
     const headers = { ...(options.headers || {}) };
     const init = {
@@ -398,7 +354,7 @@ async function hmApiFetch(path, options = {}) {
         headers['Content-Type'] = 'application/json';
     }
 
-    const response = await fetch(resolveApiUrl(path), init);
+    const response = await apiFetch(path, init);
     if (response.status === 401) {
         clearSessionState();
     }

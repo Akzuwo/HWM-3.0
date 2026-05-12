@@ -1,7 +1,6 @@
-const API_BASE_URL =
-  (typeof window !== 'undefined' && typeof window.hmResolveApiBase === 'function')
-    ? window.hmResolveApiBase()
-    : 'https://hwm-api.akzuwo.ch';
+import { resolveApiBase } from './api-client.js';
+
+const API_BASE_URL = resolveApiBase();
 
 function fetchWithSession(url, options = {}) {
   const { headers, ...rest } = options || {};

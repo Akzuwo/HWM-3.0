@@ -1,3 +1,5 @@
+import { resolveApiBase } from './api-client.js';
+
 // kalender.js
 if (typeof window !== 'undefined' && window.__hmKalenderLoaded) {
   console.warn('kalender.js was loaded more than once. Skipping duplicate execution.');
@@ -6,10 +8,7 @@ if (typeof window !== 'undefined' && window.__hmKalenderLoaded) {
     window.__hmKalenderLoaded = true;
   }
 
-const API_BASE_URL =
-  (typeof window !== 'undefined' && typeof window.hmResolveApiBase === 'function')
-    ? window.hmResolveApiBase()
-    : 'https://hwm-api.akzuwo.ch';
+const API_BASE_URL = resolveApiBase();
 const LOCAL_TEST_HOSTS = new Set(['localhost', '127.0.0.1']);
 const CAN_USE_TEMPORARY_TEST_MODE =
   typeof window !== 'undefined' && LOCAL_TEST_HOSTS.has(window.location.hostname);

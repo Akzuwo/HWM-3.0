@@ -1,8 +1,7 @@
+import { resolveApiBase } from './api-client.js';
+
 (function () {
-  const API_BASE =
-    (typeof window !== 'undefined' && typeof window.hmResolveApiBase === 'function')
-      ? window.hmResolveApiBase()
-      : 'https://hwm-api.akzuwo.ch';
+  const API_BASE = resolveApiBase();
   const DEFAULT_ENDPOINT = `${API_BASE}/aktuelles_fach`;
   const FREE_TOKENS = ['frei', 'free', 'libero', 'libre', '-'];
   const DEFAULT_REFRESH = 30000;

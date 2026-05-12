@@ -1,15 +1,7 @@
 import { createTable, createDialog, createForm } from './admin-shared.js';
+import { resolveApiBase } from './api-client.js';
 
-const API_BASE = (() => {
-  const base = (typeof window !== 'undefined' && typeof window.hmResolveApiBase === 'function')
-    ? window.hmResolveApiBase()
-    : 'https://hwm-api.akzuwo.ch';
-  if (typeof window !== 'undefined') {
-    window.__HM_RESOLVED_API_BASE__ = base;
-    window.hmResolveApiBase = () => base;
-  }
-  return String(base).replace(/\/+$/, '');
-})();
+const API_BASE = resolveApiBase();
 
 const TRANSLATIONS = {
   de: {

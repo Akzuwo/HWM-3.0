@@ -1,17 +1,8 @@
+import { resolveApiUrl } from './api-client.js';
+
 /* Profile page logic: load /api/me, allow password updates, and account deletion */
 (function () {
   'use strict'
-
-  const API_BASE = (() => {
-    if (typeof window !== 'undefined' && typeof window.hmResolveApiBase === 'function') {
-      return window.hmResolveApiBase()
-    }
-    const fallback = 'https://hwm-api.akzuwo.ch'
-    if (typeof window !== 'undefined' && typeof window.hmResolveApiBase !== 'function') {
-      window.hmResolveApiBase = () => fallback
-    }
-    return fallback
-  })()
 
   const i18nScope = window.hmI18n ? window.hmI18n.scope('profile') : null
   const locale = (window.hmI18n && typeof window.hmI18n.getLocale === 'function'
@@ -19,13 +10,6 @@
     : document.documentElement.lang || 'en')
 
   const t = (key, fallback) => (i18nScope ? i18nScope(key, fallback) : fallback)
-
-  function resolveApiUrl(path) {
-    if (!path) return API_BASE
-    if (/^https?:\/\//i.test(path)) return path
-    if (path.startsWith('/')) return `${API_BASE}${path}`
-    return `${API_BASE}/${path}`
-  }
 
   async function apiFetch(path, method = 'GET', body = null) {
     const opts = { method, credentials: 'include', headers: {} }

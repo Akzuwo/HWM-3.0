@@ -13,6 +13,7 @@ __pycache__/
 !.env.example
 calendar-*-debug-*.png
 calendar-hwm3-*.png
+start-local.ps1
 
 # PDF-to-JSON parser working directories
 tools/pdf to json parser/schedule importer/input/*

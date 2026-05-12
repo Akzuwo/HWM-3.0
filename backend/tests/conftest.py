@@ -1,7 +1,5 @@
-import builtins
 import datetime
 import importlib
-import io
 import os
 import sys
 import time
@@ -1595,15 +1593,6 @@ def app_client(monkeypatch):
     monkeypatch.setenv('CONTACT_SMTP_PASSWORD', 'not-used')
     monkeypatch.setenv('CONTACT_RECIPIENT', 'contact@example.com')
     monkeypatch.setenv('CONTACT_FROM_ADDRESS', 'Homework Manager <noreply@example.com>')
-
-    real_open = builtins.open
-
-    def mock_open(path, *args, **kwargs):
-        if path == '/etc/secrets/hwm-session-secret':
-            return io.StringIO('secret')
-        return real_open(path, *args, **kwargs)
-
-    monkeypatch.setattr(builtins, 'open', mock_open)
 
     now = datetime.datetime.utcnow()
     storage: Dict[str, object] = {

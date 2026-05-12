@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppLayout } from '../components/AppLayout';
 import { usePageSetup } from '../hooks/usePageSetup';
+import { resolveApiBase } from '../../utils/js/api-client';
 
 const today = new Date().toISOString().slice(0, 10);
 const filters = [
@@ -8,13 +9,6 @@ const filters = [
   { id: 'open', label: 'Offen' },
   { id: 'done', label: 'Erledigt' }
 ];
-
-function resolveApiBase() {
-  if (typeof window !== 'undefined' && typeof window.hmResolveApiBase === 'function') {
-    return window.hmResolveApiBase();
-  }
-  return 'https://hwm-api.akzuwo.ch';
-}
 
 async function apiFetch(path, options = {}) {
   const base = resolveApiBase();

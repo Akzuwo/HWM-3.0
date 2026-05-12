@@ -1,9 +1,8 @@
+import { resolveApiBase } from './api-client.js';
+
 (function (global) {
   const root = typeof global !== 'undefined' ? global : window;
-  const API_BASE =
-    typeof root.hmResolveApiBase === 'function'
-      ? root.hmResolveApiBase()
-      : 'https://hwm-api.akzuwo.ch';
+  const API_BASE = resolveApiBase();
 
   function fetchWithSession(url, options = {}) {
     const { headers, ...rest } = options || {};
