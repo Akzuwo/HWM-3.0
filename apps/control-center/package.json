@@ -1,0 +1,9 @@
+{
+  "name": "@hwm/control-center",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "node -e \"console.log('Control Center ist noch nicht scaffolded.')\"",
+    "build": "node -e \"console.log('Control Center build ist noch nicht scaffolded.')\""
+  }
+}

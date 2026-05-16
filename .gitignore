@@ -1,19 +1,46 @@
 node_modules/
+apps/frontend/node_modules/
+apps/control-center/node_modules/
 dist/
+apps/frontend/dist/
+apps/control-center/dist/
 .vite/
 test-results/
 __pycache__/
+.pytest_cache/
+.venv/
+venv/
+*.pyc
 *.py[cod]
 *.log
 *.tmp
 *.bak
 *.old
+*.sqlite
+*.sqlite3
+*.db
 .env
 .env.*
+.env.local
+.env.*.local
 !.env.example
+!apps/backend/.env.example
+!apps/frontend/.env.example
 calendar-*-debug-*.png
 calendar-hwm3-*.png
 start-local.ps1
+
+# Local backend runtime data
+apps/backend/data/*
+!apps/backend/data/.gitkeep
+apps/backend/logs/*
+!apps/backend/logs/.gitkeep
+apps/backend/imports/*
+!apps/backend/imports/.gitkeep
+apps/backend/exports/*
+!apps/backend/exports/.gitkeep
+apps/backend/backups/*
+!apps/backend/backups/.gitkeep
 
 # PDF-to-JSON parser working directories
 tools/pdf to json parser/schedule importer/input/*

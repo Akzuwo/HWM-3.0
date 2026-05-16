@@ -1,0 +1,7 @@
+flask
+flask-cors
+gunicorn
+waitress
+pytz
+argon2-cffi
+python-dotenv
