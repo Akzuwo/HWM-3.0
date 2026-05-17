@@ -4,6 +4,12 @@ apps/control-center/node_modules/
 dist/
 apps/frontend/dist/
 apps/control-center/dist/
+apps/control-center/dist-renderer/
+apps/control-center/resources/backend-python/
+apps/control-center/resources/backend-exe/backend.exe
+apps/backend/build/
+apps/backend/dist/
+apps/backend/*.spec
 .vite/
 test-results/
 __pycache__/

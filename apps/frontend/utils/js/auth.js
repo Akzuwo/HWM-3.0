@@ -2,6 +2,7 @@ import { apiFetch, installApiBaseGlobals } from './api-client.js';
 
 // LOGIN & SESSION MANAGEMENT
 const authT = window.hmI18n ? window.hmI18n.scope('auth') : (key, fallback) => fallback;
+const showOverlay = (...args) => window.showOverlay?.(...args);
 
 function formatMessage(template, params) {
     if (!template) {
@@ -3700,6 +3701,17 @@ async function saveEntry(event) {
 
 
 // Initialcheck beim Laden der Seite
+Object.assign(window, {
+    closeEntryModal,
+    showEntryForm,
+    saveEntry,
+    setupModalFormInteractions,
+    canManageEntries,
+    ENTRY_FORM_MESSAGES,
+    CALENDAR_MODAL_MESSAGES,
+    CALENDAR_MODAL_BUTTONS
+});
+
 window.addEventListener('DOMContentLoaded', checkLogin);
 window.addEventListener('DOMContentLoaded', () => {
     setupModalFormInteractions(document.getElementById('entry-form'));

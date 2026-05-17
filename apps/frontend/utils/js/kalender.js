@@ -9,6 +9,19 @@ if (typeof window !== 'undefined' && window.__hmKalenderLoaded) {
   }
 
 const API_BASE_URL = resolveApiBase();
+const IS_DEV = Boolean(import.meta.env?.DEV);
+const showOverlay = (...args) => window.showOverlay?.(...args);
+const showEntryForm = (...args) => window.showEntryForm?.(...args);
+const setupModalFormInteractions = (...args) => window.setupModalFormInteractions?.(...args);
+const ENTRY_FORM_MESSAGES = window.ENTRY_FORM_MESSAGES || {
+  invalidDate: 'Please enter a valid date.',
+  invalidEnd: 'The end time must not be earlier than the start time.',
+  invalidEndDate: 'The end date must not be earlier than the start date.',
+  missingClass: 'Please sign in and make sure you are assigned to a class.'
+};
+const CALENDAR_MODAL_MESSAGES = window.CALENDAR_MODAL_MESSAGES || {
+  saveSuccess: 'Entry saved successfully.'
+};
 const LOCAL_TEST_HOSTS = new Set(['localhost', '127.0.0.1']);
 const CAN_USE_TEMPORARY_TEST_MODE =
   typeof window !== 'undefined' && LOCAL_TEST_HOSTS.has(window.location.hostname);
@@ -449,6 +462,8 @@ let lastCalendarViewType = null;
 let lastCalendarDateValue = null;
 let resizeHandler = null;
 let calendarAnimationIndex = 0;
+let lastCalendarEventSignature = '';
+let calendarLoadSequence = 0;
 let pendingDragChange = null;
 let calendarPreferences = {
   muted_subjects: [],
@@ -970,7 +985,7 @@ function setModalDescription(html) {
 }
 
 function openModal(event) {
-  const { id } = event;
+  const id = event.extendedProps?.sourceId ?? event.id;
   const {
     type,
     typeLabel,
@@ -1355,10 +1370,16 @@ window.confirmDeleteEntry = confirmDeleteEntry;
 function initActionBar() {
   const actionBar = document.querySelector('.calendar-action-bar');
   if (!actionBar) return;
+  const createBtn = actionBar.querySelector('[data-action="create"]');
   const exportBtn = actionBar.querySelector('[data-action="export"]');
   const backBtn = actionBar.querySelector('[data-action="back"]');
 
   applyActionBarPermissions();
+
+  if (createBtn && createBtn.dataset.hmRoleBound !== 'true' && createBtn.dataset.hmCreateFallbackBound !== 'true') {
+    createBtn.addEventListener('click', () => showEntryForm());
+    createBtn.dataset.hmCreateFallbackBound = 'true';
+  }
 
   if (exportBtn) {
     exportBtn.addEventListener('click', handleExportClick);
@@ -1378,7 +1399,7 @@ async function handleExportClick(event) {
     showOverlay(testModeText.actionDisabled, 'warning');
     return;
   }
-  const label = button.querySelector('.calendar-action__label');
+  const label = button.querySelector('.calendar-cta__label, .calendar-action__label');
   const defaultLabel = label ? label.textContent : actionText.exportLabel;
   button.classList.add('is-loading');
   button.disabled = true;
@@ -1534,6 +1555,52 @@ function createEventContent(info) {
   return { domNodes: [container] };
 }
 
+function createCalendarEventId(entry) {
+  const rawId = entry?.id ?? [
+    entry?.typ || 'entry',
+    entry?.datum || '',
+    entry?.enddatum || '',
+    entry?.startzeit || '',
+    entry?.endzeit || '',
+    entry?.fach || '',
+    entry?.beschreibung || ''
+  ].join('|');
+  return `${entry?.typ || 'entry'}:${String(rawId)}`;
+}
+
+function dedupeCalendarEvents(events) {
+  const seen = new Set();
+  const duplicates = new Set();
+  const result = [];
+
+  events.forEach((event) => {
+    if (seen.has(event.id)) {
+      duplicates.add(event.id);
+      return;
+    }
+    seen.add(event.id);
+    result.push(event);
+  });
+
+  if (IS_DEV && duplicates.size > 0) {
+    console.warn('[HWM calendar] Duplicate FullCalendar event IDs ignored:', Array.from(duplicates));
+  }
+
+  return result;
+}
+
+function getCalendarEventSignature(events) {
+  return JSON.stringify(events.map((event) => [
+    event.id,
+    event.title,
+    event.start,
+    event.end || '',
+    event.allDay,
+    event.extendedProps?.type || '',
+    event.extendedProps?.todoStatus || ''
+  ]));
+}
+
 function normaliseEvent(entry) {
   const typeLabel = TYPE_LABELS[entry.typ] || entry.typ;
   const subject = entry.fach || '';
@@ -1561,11 +1628,12 @@ function normaliseEvent(entry) {
   const canUpdateStatus = !isTemporaryTestData && isPrivate && isOwned && entry.typ === 'todo';
 
   const eventConfig = {
-    id: String(entry.id),
+    id: createCalendarEventId(entry),
     title: displaySubject,
     start: startLabel ? `${entry.datum}T${startTime}` : entry.datum,
     allDay: !startLabel,
     extendedProps: {
+      sourceId: entry.id,
       type: entry.typ,
       typeLabel,
       description: entry.beschreibung || '',
@@ -1759,25 +1827,40 @@ function prepareCalendarContainer(calendarEl) {
   calendarEl.removeAttribute('aria-live');
   calendarEl.setAttribute('aria-busy', 'false');
   calendarEl.removeAttribute('data-state');
+  calendarEl.removeAttribute('data-loading-message');
   calendarEl.innerHTML = '';
 }
 
 function showCalendarLoading(calendarEl, message) {
   calendarEl.setAttribute('data-state', 'loading');
+  calendarEl.setAttribute('aria-busy', 'true');
+  calendarEl.setAttribute('data-loading-message', message);
+  if (calendarInstance) {
+    return;
+  }
   calendarEl.setAttribute('role', 'status');
   calendarEl.setAttribute('aria-live', 'polite');
-  calendarEl.setAttribute('aria-busy', 'true');
-  calendarEl.innerHTML = `
-    <span class="calendar-loading__spinner" aria-hidden="true"></span>
-    <span class="calendar-loading__text">${message}</span>
-  `;
+  calendarEl.replaceChildren(
+    Object.assign(document.createElement('span'), {
+      className: 'calendar-loading__spinner',
+      ariaHidden: 'true'
+    }),
+    Object.assign(document.createElement('span'), {
+      className: 'calendar-loading__text',
+      textContent: message
+    })
+  );
 }
 
 function showCalendarError(calendarEl, message) {
   calendarEl.setAttribute('data-state', 'error');
+  calendarEl.setAttribute('aria-busy', 'false');
+  calendarEl.removeAttribute('data-loading-message');
+  if (calendarInstance) {
+    return;
+  }
   calendarEl.setAttribute('role', 'alert');
   calendarEl.setAttribute('aria-live', 'polite');
-  calendarEl.setAttribute('aria-busy', 'false');
   calendarEl.textContent = message;
 }
 
@@ -1861,7 +1944,7 @@ async function confirmCalendarDrag() {
         'X-Role': role
       },
       body: JSON.stringify({
-        id: event.id,
+        id: props.sourceId ?? event.id,
         type: props.type,
         date: nextDate,
         description: props.type === 'event'
@@ -1895,6 +1978,9 @@ function initialiseCalendar(events) {
   const calendarEl = document.getElementById('calendar');
   if (!calendarEl) return;
 
+  const stableEvents = dedupeCalendarEvents(events);
+  const nextSignature = getCalendarEventSignature(stableEvents);
+
   if (calendarInstance) {
     if (calendarInstance.view && calendarInstance.view.type) {
       lastCalendarViewType = calendarInstance.view.type;
@@ -1905,9 +1991,35 @@ function initialiseCalendar(events) {
         lastCalendarDateValue = activeDate.valueOf();
       }
     }
-    calendarInstance.destroy();
-    calendarInstance = null;
+
+    if (nextSignature !== lastCalendarEventSignature) {
+      calendarAnimationIndex = 0;
+      if (typeof calendarInstance.batchRendering === 'function') {
+        calendarInstance.batchRendering(() => {
+          calendarInstance.getEventSources().forEach((source) => source.remove());
+          calendarInstance.removeAllEvents();
+          calendarInstance.addEventSource(stableEvents);
+        });
+      } else {
+        calendarInstance.getEventSources().forEach((source) => source.remove());
+        calendarInstance.removeAllEvents();
+        calendarInstance.addEventSource(stableEvents);
+      }
+      lastCalendarEventSignature = nextSignature;
+    }
+
+    calendarEl.removeAttribute('role');
+    calendarEl.removeAttribute('aria-live');
+    calendarEl.setAttribute('aria-busy', 'false');
+    calendarEl.removeAttribute('data-state');
+    calendarEl.removeAttribute('data-loading-message');
+    updateWeekStrip(calendarInstance);
+    updateMonthLabel(calendarInstance);
+    updateViewButtons(calendarInstance);
+    setupCalendarControls(calendarInstance);
+    return;
   }
+
   if (resizeHandler) {
     window.removeEventListener('resize', resizeHandler);
     resizeHandler = null;
@@ -1936,7 +2048,7 @@ function initialiseCalendar(events) {
       week: t('views.week', 'Week'),
       day: t('views.day', 'Day')
     },
-    events,
+    events: stableEvents,
     eventContent: createEventContent,
     eventDidMount: (info) => {
       const eventContent = info.el.querySelector('.calendar-event');
@@ -1997,8 +2109,16 @@ function initialiseCalendar(events) {
 
   calendar.render();
   calendarInstance = calendar;
+  lastCalendarEventSignature = nextSignature;
   updateWeekStrip(calendarInstance);
   setupCalendarControls(calendarInstance);
+
+  if (IS_DEV) {
+    const renderedCalendars = document.querySelectorAll('#calendar .fc').length;
+    if (renderedCalendars > 1) {
+      console.warn('[HWM calendar] Multiple FullCalendar DOM instances detected:', renderedCalendars);
+    }
+  }
 
   resizeHandler = debounce(() => {
     if (!calendarInstance) return;
@@ -2013,6 +2133,8 @@ async function loadCalendar() {
   if (!calendarEl) return;
   showCalendarLoading(calendarEl, t('status.loading', 'Loading calendar …'));
 
+  const requestId = ++calendarLoadSequence;
+
   await loadCalendarPreferences();
   const context = await ensureSessionClassContext();
   const classId = context?.classId || currentClassId;
@@ -2025,6 +2147,9 @@ async function loadCalendar() {
     }
 
     const res = await fetchWithSession(entriesUrl.toString());
+    if (requestId !== calendarLoadSequence) {
+      return;
+    }
     if (res.status === 401) {
       publishMobileCalendarState({
         events: [],
@@ -2038,7 +2163,7 @@ async function loadCalendar() {
     if (await responseRequiresClassContext(res)) {
       setCurrentClassContext('', '');
       const message = classSelectorEnabled ? classSelectorText.required : unauthorizedMessage;
-      publishMobileCalendarState({ events: [], classId: '', classSlug: '', error: message });
+      publishMobileCalendarState({ events: lastCalendarEvents, classId: '', classSlug: '', error: message });
       showCalendarError(calendarEl, message);
       return;
     }
@@ -2048,16 +2173,22 @@ async function loadCalendar() {
 
     setTemporaryTestMode(false);
     const entries = withTemporaryTestEntries(await res.json()).filter(shouldDisplayEntry);
-    const events = entries.map(normaliseEvent);
+    if (requestId !== calendarLoadSequence) {
+      return;
+    }
+    const events = dedupeCalendarEvents(entries.map(normaliseEvent));
     publishMobileCalendarState({ events, classId, classSlug: currentClassSlug, error: '' });
     initialiseCalendar(events);
   } catch (err) {
+    if (requestId !== calendarLoadSequence) {
+      return;
+    }
     console.error('Failed to load calendar:', err);
     const usingTemporaryTestMode = activateTemporaryTestMode(err, 'calendar entries');
     const fallbackContext = usingTemporaryTestMode
       ? ensureTemporaryTestClassContext(classSlug || currentClassSlug)
       : { classId: currentClassId, classSlug: currentClassSlug };
-    const fallbackEvents = withTemporaryTestEntries([]).filter(shouldDisplayEntry).map(normaliseEvent);
+    const fallbackEvents = dedupeCalendarEvents(withTemporaryTestEntries([]).filter(shouldDisplayEntry).map(normaliseEvent));
     publishMobileCalendarState({
       events: fallbackEvents,
       classId: fallbackContext.classId,

@@ -26,13 +26,18 @@ const scriptLoaders = {
 };
 
 const commonScripts = ['i18n', 'i18nAnim', 'overlay', 'toast', 'modal', 'auth', 'pageTransitions'];
+const loadedScripts = new Set();
 
 export async function loadLegacyScripts(names = []) {
   const queue = [...commonScripts, ...names];
   for (const name of queue) {
+    if (loadedScripts.has(name)) {
+      continue;
+    }
     const load = scriptLoaders[name];
     if (load) {
       await load();
+      loadedScripts.add(name);
     }
   }
 }

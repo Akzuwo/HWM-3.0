@@ -1,16 +1,16 @@
 :root {
-  --wp-bg: #080b12;
-  --wp-surface: #121827;
-  --wp-border: rgba(148, 163, 184, 0.24);
-  --wp-text: #f8fbff;
-  --wp-muted: #b2bfd7;
-  --wp-accent: #5b8def;
+  --wp-bg: #eef4ff;
+  --wp-surface: rgba(255, 255, 255, 0.46);
+  --wp-border: rgba(177, 203, 238, 0.64);
+  --wp-text: #111111;
+  --wp-muted: #51667e;
+  --wp-accent: #5c7cff;
 }
 
 body.weekly-preview-page {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(circle at 0% 0%, rgba(91, 141, 239, 0.18), transparent 45%), var(--wp-bg);
+  background: var(--wp-bg);
   color: var(--wp-text);
 }
 
@@ -53,8 +53,14 @@ main.weekly-preview {
   border: 1px solid var(--wp-border);
   border-radius: 18px;
   padding: clamp(20px, 3vw, 30px);
-  background: linear-gradient(150deg, rgba(91, 141, 239, 0.16), rgba(15, 23, 42, 0.85) 54%), var(--wp-surface);
-  box-shadow: 0 26px 52px rgba(4, 8, 18, 0.42);
+  background:
+    radial-gradient(circle at top left, rgba(255,255,255,0.78), transparent 42%),
+    linear-gradient(180deg, rgba(255,255,255,0.82), rgba(238,245,255,0.48) 58%, rgba(201,227,255,0.22)),
+    var(--wp-surface);
+  box-shadow:
+    0 18px 42px rgba(111, 142, 208, 0.12),
+    inset 0 1px 0 rgba(255,255,255,0.94);
+  backdrop-filter: blur(24px) saturate(132%);
 }
 
 .weekly-preview__status {
@@ -66,7 +72,7 @@ main.weekly-preview {
   margin: 0 0 0.9rem;
   font-size: 1.06rem;
   line-height: 1.65;
-  color: #eaf2ff;
+  color: #223a56;
   opacity: 0;
   transform: translateY(8px);
 }
@@ -76,7 +82,16 @@ main.weekly-preview {
 }
 
 .weekly-preview__status--loading::before {
-  content: "⏳ ";
+  content: "";
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  margin-right: 0.45rem;
+  border: 2px solid rgba(92, 124, 255, 0.22);
+  border-top-color: var(--wp-accent);
+  border-radius: 999px;
+  vertical-align: -0.1em;
+  animation: weeklySpin 0.9s linear infinite;
 }
 
 .weekly-preview__list {
@@ -91,16 +106,17 @@ main.weekly-preview {
 .weekly-preview__list li {
   line-height: 1.55;
   padding: 0.72rem 0.9rem;
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  border: 1px solid rgba(183, 206, 238, 0.58);
   border-radius: 11px;
-  background: rgba(15, 23, 42, 0.42);
+  background: rgba(255, 255, 255, 0.46);
+  color: #263d57;
   opacity: 0;
   transform: translateY(10px);
 }
 
 .weekly-preview__list li.is-visible {
   animation: weeklyFadeUp 460ms cubic-bezier(0.19, 1, 0.22, 1) forwards;
-  animation-delay: calc(var(--item-index, 0) * 65ms);
+  animation-delay: calc(var(--item-index, 0) * 45ms);
 }
 
 .weekly-preview__meta {
@@ -125,14 +141,14 @@ main.weekly-preview {
 }
 
 .weekly-preview__button--primary {
-  background: rgba(91, 141, 239, 0.24);
+  background: linear-gradient(135deg, rgba(92,124,255,0.92), rgba(101,212,255,0.78));
   border-color: rgba(91, 141, 239, 0.58);
-  color: var(--wp-text);
+  color: #ffffff;
 }
 
 .weekly-preview__button--secondary {
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--wp-text);
+  background: rgba(255, 255, 255, 0.44);
+  color: #223a56;
 }
 
 .weekly-preview__button:disabled {
@@ -148,6 +164,12 @@ main.weekly-preview {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes weeklySpin {
+  to {
+    transform: rotate(360deg);
   }
 }
 

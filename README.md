@@ -25,6 +25,18 @@ npm run dev
 npm run build
 ```
 
+Die Frontend-API-Basis-URL ist zentral konfiguriert. Aktuelle Test-API:
+
+```text
+VITE_API_BASE_URL=http://localhost:5000
+```
+
+Spaetere Production-API:
+
+```text
+VITE_API_BASE_URL=https://services.akzuwo.ch:5000
+```
+
 Alternativ vom Repo-Root:
 
 ```powershell

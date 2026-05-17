@@ -14,6 +14,20 @@ npm install
 npm run dev
 ```
 
+Die API-Basis-URL wird zentral ueber `VITE_API_BASE_URL` gesteuert. Aktuelle Test-API:
+
+```text
+VITE_API_BASE_URL=http://localhost:5000
+```
+
+Wenn diese Variable nicht gesetzt ist, nutzt das Frontend ebenfalls `http://localhost:5000`.
+
+Spaetere Production-API:
+
+```text
+VITE_API_BASE_URL=https://services.akzuwo.ch:5000
+```
+
 Build:
 
 ```powershell
@@ -78,11 +92,11 @@ npm run check:backend
 Lokal erreichbar:
 
 ```text
-http://localhost:5000/server
-http://localhost:5000/server/dashboard
-http://localhost:5000/server/logs
-http://localhost:5000/server/files
-http://localhost:5000/server/import
+http://127.0.0.1:5050/server
+http://127.0.0.1:5050/server/dashboard
+http://127.0.0.1:5050/server/logs
+http://127.0.0.1:5050/server/files
+http://127.0.0.1:5050/server/import
 ```
 
 Das Panel ist nur fuer `localhost`, `127.0.0.1` und `::1` gedacht.

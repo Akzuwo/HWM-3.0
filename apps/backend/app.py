@@ -42,15 +42,31 @@ from server_panel import init_server_panel
 
 # ---------- APP INITIALISIEREN ----------
 BASE_DIR = Path(__file__).resolve().parent
-LOGS_DIR = BASE_DIR / "logs"
-IMPORTS_DIR = BASE_DIR / "imports"
-EXPORTS_DIR = BASE_DIR / "exports"
+SERVER_HOME = Path(os.getenv("HWM_SERVER_HOME", str(BASE_DIR))).resolve()
+LOGS_DIR = SERVER_HOME / "logs"
+IMPORTS_DIR = SERVER_HOME / "imports"
+EXPORTS_DIR = SERVER_HOME / "exports"
 
 HWM_DEBUG_MODE = (os.getenv('HWM_DEBUG_MODE', '').strip().lower() in {'1', 'true', 'yes', 'on', 'debug'})
 
 HWM_LOCAL_DEV = (os.getenv('HWM_LOCAL_DEV', '').strip().lower() in {'1', 'true', 'yes', 'on'})
 
 app = Flask(__name__, static_url_path="/")
+
+LOCAL_DEV_CORS_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:4173",
+    "http://127.0.0.1:4173",
+    "http://localhost:4174",
+    "http://127.0.0.1:4174",
+]
+LOCAL_DEV_CORS_ORIGIN_PATTERNS = [
+    "http://localhost:*",
+    "http://127.0.0.1:*",
+]
 
 # Session‐Cookies auch cross‐site erlauben
 app.config.update(
@@ -67,24 +83,18 @@ ALLOWED_CORS_ORIGINS = [
     "https://hw-manager.akzuwo.ch",
     "https://hwm-beta.akzuwo.ch",
     "https://hwm2.akzuwo.ch",
+    "https://services.akzuwo.ch",
+    *LOCAL_DEV_CORS_ORIGINS,
 ]
 ALLOWED_CORS_ORIGIN_PATTERNS = [
     "https://*.homework-manager.pages.dev",
-    "https://*.hwm-2-preview.pages.dev"
+    "https://*.hwm-2-preview.pages.dev",
+    *LOCAL_DEV_CORS_ORIGIN_PATTERNS,
 ]
-if HWM_DEBUG_MODE or HWM_LOCAL_DEV:
-    ALLOWED_CORS_ORIGINS.extend([
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:4173",
-        "http://127.0.0.1:4173",
-        "http://localhost:4174",
-        "http://127.0.0.1:4174",
-    ])
-    ALLOWED_CORS_ORIGIN_PATTERNS.extend([
-        "http://localhost:*",
-        "http://127.0.0.1:*",
-    ])
+for _origin in (os.getenv("HWM_CORS_ORIGINS") or "").split(","):
+    _origin = _origin.strip()
+    if _origin and _origin not in ALLOWED_CORS_ORIGINS:
+        ALLOWED_CORS_ORIGINS.append(_origin)
 
 # Environment configuration for the production deployment of the Homework Manager backend.
 # SMTP credentials are centralised in config.py to avoid duplication across modules.
@@ -223,7 +233,7 @@ def _tail_log_file(path: str, max_lines: int) -> Tuple[str, bool]:
 _setup_file_logging()
 init_server_panel(
     app,
-    base_dir=BASE_DIR,
+    base_dir=SERVER_HOME,
     logs_dir=LOGS_DIR,
     imports_dir=IMPORTS_DIR,
     exports_dir=EXPORTS_DIR,
@@ -382,12 +392,27 @@ def _resolve_cors_origin() -> Optional[str]:
     return None
 
 
+def _is_local_dev_origin(origin: Optional[str]) -> bool:
+    if not origin:
+        return False
+    if origin in LOCAL_DEV_CORS_ORIGINS:
+        return True
+    return any(fnmatch(origin, pattern) for pattern in LOCAL_DEV_CORS_ORIGIN_PATTERNS)
+
+
+@app.before_request
+def _configure_session_cookie_security():
+    local_request = _is_local_dev_origin(request.headers.get("Origin")) or request.host.startswith(("localhost:", "127.0.0.1:"))
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax" if local_request or HWM_DEBUG_MODE or HWM_LOCAL_DEV else "None"
+    app.config["SESSION_COOKIE_SECURE"] = not (local_request or HWM_DEBUG_MODE or HWM_LOCAL_DEV)
+
+
 CORS(
     app,
     supports_credentials=True,
     resources={r"/*": {"origins": ALLOWED_CORS_ORIGINS + ALLOWED_CORS_ORIGIN_PATTERNS}},
     methods=["GET","HEAD","POST","OPTIONS","PUT","DELETE"],
-    allow_headers=["Content-Type", "X-Role"]
+    allow_headers=["Content-Type", "X-Role", "Authorization"]
 )
 # ---------- DATABASE ----------
 try:
@@ -6475,7 +6500,7 @@ def _cors_preflight():
     resp.headers.update({
         'Access-Control-Allow-Origin': origin,
         'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, X-Role',
+        'Access-Control-Allow-Headers': request.headers.get('Access-Control-Request-Headers') or 'Content-Type, X-Role, Authorization',
         'Access-Control-Allow-Credentials': 'true',
         'Vary': 'Origin',
     })
@@ -6779,7 +6804,7 @@ def add_cors_headers(response):
         response.headers.pop('Access-Control-Allow-Credentials', None)
 
     response.headers['Access-Control-Allow-Methods'] = 'GET,POST,PUT,DELETE,OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Role'
+    response.headers['Access-Control-Allow-Headers'] = request.headers.get('Access-Control-Request-Headers') or 'Content-Type, X-Role, Authorization'
     return response
 
 # ---------- SERVER START ----------

@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import datetime as _dt
+import os
 import sqlite3
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "data"
+SERVER_HOME = Path(os.getenv("HWM_SERVER_HOME", str(BASE_DIR))).resolve()
+DATA_DIR = SERVER_HOME / "data"
 DB_PATH = DATA_DIR / "hwm.sqlite"
 SCHEMA_PATH = BASE_DIR / "schema.sql"
+IMPORTANT_TABLES = {"classes", "users", "eintraege", "admin_audit_logs"}
 
 
 class SQLiteCursor:
@@ -137,6 +140,26 @@ def init_db() -> None:
     except Exception:
         conn.rollback()
         raise
+    finally:
+        conn.close()
+
+
+def quick_check() -> dict[str, Any]:
+    conn = sqlite3.connect(DB_PATH, timeout=5)
+    try:
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("PRAGMA busy_timeout = 5000")
+        tables = {
+            row[0]
+            for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+        }
+        missing = sorted(IMPORTANT_TABLES - tables)
+        return {
+            "ok": not missing,
+            "db_path": str(DB_PATH),
+            "missing_tables": missing,
+            "table_count": len(tables),
+        }
     finally:
         conn.close()
 
