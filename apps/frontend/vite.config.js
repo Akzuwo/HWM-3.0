@@ -26,27 +26,5 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173
-  },
-  build: {
-    rollupOptions: {
-      input: {
-        main: 'index.html',
-        login: 'login.html',
-        kalender: 'kalender.html',
-        abfahrten: 'abfahrten/index.html',
-        upcoming: 'upcoming.html',
-        todos: 'todos.html',
-        weeklyPreview: 'weekly-preview.html',
-        stundenplan: 'stundenplan.html',
-        tagesuebersicht: 'tagesuebersicht.html',
-        notenrechner: 'notenrechner.html',
-        profile: 'profile.html',
-        help: 'help.html',
-        changelog: 'changelog.html',
-        datenschutz: 'datenschutz.html',
-        impressum: 'impressum.html',
-        adminDashboard: 'admin/dashboard.html'
-      }
-    }
   }
 });

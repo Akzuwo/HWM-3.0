@@ -1,14 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 const navItems = [
-  { href: '/index.html', label: 'Startseite', key: 'common.nav.home' },
-  { href: '/kalender.html', label: 'Kalender', key: 'common.nav.calendar' },
-  { href: '/abfahrten/', label: 'Abfahrten', key: null },
-  { href: '/upcoming.html', label: 'Anstehend', key: 'common.nav.upcoming' },
-  { href: '/todos.html', label: 'ToDos', key: 'common.nav.todos' },
-  { href: '/weekly-preview.html', label: 'Wochenvorschau', key: 'common.nav.weeklyPreview' },
-  { href: '/stundenplan.html', label: 'Aktuelles Fach', key: 'common.nav.currentSubject' },
-  { href: '/notenrechner.html', label: 'Notenrechner', key: 'common.nav.grades' }
+  { href: '/', label: 'Startseite', key: 'common.nav.home' },
+  { href: '/kalender', label: 'Kalender', key: 'common.nav.calendar' },
+  { href: '/abfahrten', label: 'Abfahrten', key: null },
+  { href: '/upcoming', label: 'Anstehend', key: 'common.nav.upcoming' },
+  { href: '/todos', label: 'ToDos', key: 'common.nav.todos' },
+  { href: '/weekly-preview', label: 'Wochenvorschau', key: 'common.nav.weeklyPreview' },
+  { href: '/stundenplan', label: 'Aktuelles Fach', key: 'common.nav.currentSubject' },
+  { href: '/notenrechner', label: 'Notenrechner', key: 'common.nav.grades' }
 ];
 
 const locales = [
@@ -63,12 +63,12 @@ function GlobeIcon({ className = '' }) {
 
 function getCurrentPath() {
   if (typeof window === 'undefined') {
-    return '/index.html';
+    return '/';
   }
 
   const path = normalizePath(window.location.pathname);
   if (!path) {
-    return '/index.html';
+    return '/';
   }
 
   return path;
@@ -77,10 +77,10 @@ function getCurrentPath() {
 function normalizePath(pathname) {
   const path = String(pathname || '').toLowerCase();
   if (!path || path === '/') {
-    return '/index.html';
+    return '/';
   }
 
-  return path.replace(/\/index\.html$/, '').replace(/\/+$/, '') || '/index.html';
+  return path.replace(/\/index\.html$/, '').replace(/\/+$/, '') || '/';
 }
 
 function NavLinks({ onNavigate }) {
@@ -265,12 +265,12 @@ function UserArea() {
         </button>
         <ul className="account-menu" data-account-menu="" role="menu">
           <li>
-            <a className="account-option is-hidden" href="/admin/dashboard.html" data-account-admin="" role="menuitem" aria-hidden="true" tabIndex="-1">
+            <a className="account-option is-hidden" href="/admin/dashboard" data-account-admin="" role="menuitem" aria-hidden="true" tabIndex="-1">
               Adminbereich
             </a>
           </li>
           <li>
-            <a className="account-option" href="/profile.html" data-account-profile="" role="menuitem">
+            <a className="account-option" href="/profile" data-account-profile="" role="menuitem">
               Profil
             </a>
           </li>
@@ -400,7 +400,7 @@ export function Header() {
     <header className="hm-navbar" data-nav="" data-i18n-attr="aria-label:common.nav.primary" role="navigation" aria-label="Main navigation">
       <div className="hm-navbar__inner header">
         <div className="header-left logo">
-          <a className="logo-link" href="/index.html" data-brand-link="">
+          <a className="logo-link" href="/" data-brand-link="">
             <img data-logo="" alt="" aria-hidden="true" width="32" height="32" src="/media/logo.png" />
             <span className="brand-mark" data-i18n="common.appName">
               Homework Manager
@@ -481,7 +481,7 @@ export function Header() {
           <div className="mobile-sidebar__header">
             <div className="mobile-sidebar__title-group">
               <span className="mobile-sidebar__eyebrow">Navigation</span>
-              <a className="mobile-sidebar__brand" href="/index.html" onClick={closeNav}>
+              <a className="mobile-sidebar__brand" href="/" onClick={closeNav}>
                 <img alt="" aria-hidden="true" width="28" height="28" src="/media/logo.png" />
                 <span className="mobile-sidebar__title" data-i18n="common.appName">
                   Homework Manager
