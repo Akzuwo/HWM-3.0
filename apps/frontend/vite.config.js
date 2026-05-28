@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+import { cloudflare } from "@cloudflare/vite-plugin";
+
 function departuresRouteRedirectPlugin() {
   return {
     name: 'departures-route-redirect',
@@ -19,7 +21,7 @@ function departuresRouteRedirectPlugin() {
 }
 
 export default defineConfig({
-  plugins: [react(), departuresRouteRedirectPlugin()],
+  plugins: [react(), departuresRouteRedirectPlugin(), cloudflare()],
   envDir: '.',
   server: {
     host: true,
