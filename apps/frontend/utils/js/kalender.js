@@ -465,6 +465,7 @@ let calendarAnimationIndex = 0;
 let lastCalendarEventSignature = '';
 let calendarLoadSequence = 0;
 let pendingDragChange = null;
+let visibleRangeEventMap = new Map();
 let calendarPreferences = {
   muted_subjects: [],
   show_completed_todos: false
@@ -541,6 +542,103 @@ function formatEntryDate(date) {
   const month = String(next.getMonth() + 1).padStart(2, '0');
   const day = String(next.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function getViewDateKey(date) {
+  if (!date) {
+    return '';
+  }
+  return formatEntryDate(date);
+}
+
+function buildVisibleRangeEventMap(calendar) {
+  if (!calendar?.view) {
+    return new Map();
+  }
+
+  const rangeStart = calendar.view.activeStart instanceof Date ? calendar.view.activeStart : null;
+  const rangeEnd = calendar.view.activeEnd instanceof Date ? calendar.view.activeEnd : null;
+  if (!rangeStart || !rangeEnd) {
+    return new Map();
+  }
+
+  const map = new Map();
+  const visibleStartKey = getViewDateKey(rangeStart);
+  const visibleEndKey = getViewDateKey(new Date(rangeEnd.getTime() - 1));
+
+  calendar.getEvents().forEach((event) => {
+    const eventStart = event.start instanceof Date ? new Date(event.start) : null;
+    if (!eventStart) {
+      return;
+    }
+
+    const eventStartKey = getViewDateKey(eventStart);
+    let eventEndKey = '';
+    if (event.end instanceof Date) {
+      const inclusiveEnd = new Date(event.end);
+      inclusiveEnd.setMilliseconds(inclusiveEnd.getMilliseconds() - 1);
+      eventEndKey = getViewDateKey(inclusiveEnd);
+    }
+
+    if (!eventEndKey || eventEndKey < eventStartKey) {
+      eventEndKey = eventStartKey;
+    }
+
+    const loopStart = eventStartKey < visibleStartKey ? visibleStartKey : eventStartKey;
+    const loopEnd = eventEndKey > visibleEndKey ? visibleEndKey : eventEndKey;
+    if (!loopStart || !loopEnd || loopStart > loopEnd) {
+      return;
+    }
+
+    let cursor = loopStart;
+    while (cursor && cursor <= loopEnd) {
+      const bucket = map.get(cursor);
+      if (bucket) {
+        bucket.push(event);
+      } else {
+        map.set(cursor, [event]);
+      }
+      cursor = addDaysToDate(cursor, 1);
+    }
+  });
+
+  return map;
+}
+
+function applyMonthCellMetrics(calendar) {
+  const calendarEl = document.getElementById('calendar');
+  if (!calendarEl || !calendar?.view) {
+    return;
+  }
+
+  const isMonthView = calendar.view.type === 'dayGridMonth';
+  calendarEl.dataset.calendarView = calendar.view.type || '';
+  if (!isMonthView) {
+    delete calendarEl.dataset.monthDensity;
+    visibleRangeEventMap = new Map();
+    document.querySelectorAll('#calendar .fc-daygrid-day[data-density]').forEach((cell) => {
+      cell.removeAttribute('data-density');
+      cell.style.removeProperty('--day-event-count');
+    });
+    return;
+  }
+
+  visibleRangeEventMap = buildVisibleRangeEventMap(calendar);
+
+  const rowCount = Math.max(document.querySelectorAll('#calendar .fc-daygrid-body tbody tr').length, 1);
+  const availableHeight = calendarEl.clientHeight;
+  const estimatedCellHeight = rowCount > 0 ? availableHeight / rowCount : availableHeight;
+  const density =
+    estimatedCellHeight < 104 ? 'tight' : estimatedCellHeight < 128 ? 'compact' : 'comfortable';
+  calendarEl.dataset.monthDensity = density;
+
+  document.querySelectorAll('#calendar .fc-daygrid-day[data-date]').forEach((cell) => {
+    const dateKey = cell.getAttribute('data-date') || '';
+    const count = visibleRangeEventMap.get(dateKey)?.length || 0;
+    const cellDensity = count >= 5 ? 'dense' : count >= 3 ? 'busy' : 'calm';
+    cell.setAttribute('data-density', cellDensity);
+    cell.style.setProperty('--day-event-count', String(count));
+  });
 }
 
 function normalisePreferencePayload(payload = {}) {
@@ -1521,19 +1619,35 @@ function createEventContent(info) {
   const subjectLabel = info.event.title;
   const startLabel = info.event.extendedProps.startLabel;
   const endLabel = info.event.extendedProps.endLabel;
-  const metaPieces = type === 'ferien' ? [] : [typeLabel];
+  const isMonthView = info.view.type === 'dayGridMonth';
+  const metaPieces = [];
   if (info.event.extendedProps.isTemporaryTestData) {
     metaPieces.unshift(testModeText.entryLabel);
   }
-  if (startLabel && endLabel) {
-    metaPieces.push(`${startLabel} – ${endLabel}`);
-  } else if (startLabel) {
-    metaPieces.push(startLabel);
+  if (isMonthView) {
+    if (startLabel && endLabel) {
+      metaPieces.push(`${startLabel} – ${endLabel}`);
+    } else if (startLabel) {
+      metaPieces.push(startLabel);
+    } else if (type !== 'ferien') {
+      metaPieces.push(typeLabel);
+    }
+  } else {
+    if (type !== 'ferien') {
+      metaPieces.push(typeLabel);
+    }
+    if (startLabel && endLabel) {
+      metaPieces.push(`${startLabel} – ${endLabel}`);
+    } else if (startLabel) {
+      metaPieces.push(startLabel);
+    }
   }
 
   const container = document.createElement('div');
   container.className = 'calendar-event';
   container.setAttribute('data-event-type', type);
+  container.setAttribute('data-event-view', info.view.type);
+  container.title = metaPieces.length ? `${subjectLabel} · ${metaPieces.join(' · ')}` : subjectLabel;
 
   const title = document.createElement('span');
   title.className = 'calendar-event__title';
@@ -2017,6 +2131,7 @@ function initialiseCalendar(events) {
     updateMonthLabel(calendarInstance);
     updateViewButtons(calendarInstance);
     setupCalendarControls(calendarInstance);
+    applyMonthCellMetrics(calendarInstance);
     return;
   }
 
@@ -2038,11 +2153,17 @@ function initialiseCalendar(events) {
     height: '100%',
     contentHeight: '100%',
     expandRows: true,
+    fixedWeekCount: false,
+    showNonCurrentDates: true,
     handleWindowResize: true,
     headerToolbar: false,
     editable: !window.matchMedia('(max-width: 767px)').matches,
     eventStartEditable: !window.matchMedia('(max-width: 767px)').matches,
     eventDurationEditable: false,
+    dayMaxEventRows: true,
+    moreLinkClick: 'popover',
+    moreLinkContent: (args) => `+ ${args.num} weitere`,
+    eventOrder: 'start,-duration,allDay,title',
     buttonText: {
       month: t('views.month', 'Month'),
       week: t('views.week', 'Week'),
@@ -2098,6 +2219,7 @@ function initialiseCalendar(events) {
       updateWeekStrip(calendar);
       updateMonthLabel(calendar);
       updateViewButtons(calendar);
+      applyMonthCellMetrics(calendar);
     }
   };
 
@@ -2112,6 +2234,7 @@ function initialiseCalendar(events) {
   lastCalendarEventSignature = nextSignature;
   updateWeekStrip(calendarInstance);
   setupCalendarControls(calendarInstance);
+  applyMonthCellMetrics(calendarInstance);
 
   if (IS_DEV) {
     const renderedCalendars = document.querySelectorAll('#calendar .fc').length;
@@ -2123,6 +2246,7 @@ function initialiseCalendar(events) {
   resizeHandler = debounce(() => {
     if (!calendarInstance) return;
     updateWeekStrip(calendarInstance);
+    applyMonthCellMetrics(calendarInstance);
   }, 180);
 
   window.addEventListener('resize', resizeHandler);

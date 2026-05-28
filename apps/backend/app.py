@@ -10,8 +10,6 @@ import traceback
 import uuid
 import hashlib
 import secrets as pysecrets
-import urllib.request
-import urllib.error
 from collections import OrderedDict, deque
 from contextlib import closing
 from email.message import EmailMessage

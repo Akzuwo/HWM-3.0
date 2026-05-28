@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 const navItems = [
   { href: '/index.html', label: 'Startseite', key: 'common.nav.home' },
   { href: '/kalender.html', label: 'Kalender', key: 'common.nav.calendar' },
+  { href: '/abfahrten/', label: 'Abfahrten', key: null },
   { href: '/upcoming.html', label: 'Anstehend', key: 'common.nav.upcoming' },
   { href: '/todos.html', label: 'ToDos', key: 'common.nav.todos' },
   { href: '/weekly-preview.html', label: 'Wochenvorschau', key: 'common.nav.weeklyPreview' },
@@ -16,6 +17,9 @@ const locales = [
   { code: 'it', label: 'Italiano' },
   { code: 'fr', label: 'Francais' }
 ];
+
+const DESKTOP_NAV_BREAKPOINT = 1080;
+const MEHR_BUTTON_ESTIMATE = 86;
 
 function ChevronIcon({ className = '', direction = 'down' }) {
   const transforms = {
@@ -62,12 +66,21 @@ function getCurrentPath() {
     return '/index.html';
   }
 
-  const path = window.location.pathname.toLowerCase();
-  if (path === '/' || path.endsWith('/')) {
+  const path = normalizePath(window.location.pathname);
+  if (!path) {
     return '/index.html';
   }
 
   return path;
+}
+
+function normalizePath(pathname) {
+  const path = String(pathname || '').toLowerCase();
+  if (!path || path === '/') {
+    return '/index.html';
+  }
+
+  return path.replace(/\/index\.html$/, '').replace(/\/+$/, '') || '/index.html';
 }
 
 function NavLinks({ onNavigate }) {
@@ -79,13 +92,82 @@ function NavLinks({ onNavigate }) {
       className="nav-link"
       href={item.href}
       data-route={item.href.replace(/^\//, '')}
-      data-i18n={item.key}
+      {...(item.key ? { 'data-i18n': item.key } : {})}
       onClick={onNavigate}
-      aria-current={currentPath === item.href.toLowerCase() ? 'page' : undefined}
+      aria-current={currentPath === normalizePath(item.href) ? 'page' : undefined}
     >
       {item.label}
     </a>
   ));
+}
+
+function MoreMenu({ items, currentPath, onNavigate }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef(null);
+  const hasActiveItem = items.some((item) => currentPath === normalizePath(item.href));
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const handlePointerDown = (event) => {
+      if (!menuRef.current?.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen]);
+
+  if (!items.length) {
+    return null;
+  }
+
+  return (
+    <div ref={menuRef} className={`more-menu${isOpen ? ' is-open' : ''}`}>
+      <button
+        type="button"
+        className={`nav-link nav-link--more${hasActiveItem ? ' is-active' : ''}`}
+        aria-haspopup="menu"
+        aria-expanded={isOpen ? 'true' : 'false'}
+        aria-current={hasActiveItem ? 'page' : undefined}
+        onClick={() => setIsOpen((open) => !open)}
+      >
+        <span>Mehr</span>
+        <ChevronIcon className="more-menu__chevron" />
+      </button>
+      <div className="more-menu__panel" role="menu">
+        {items.map((item) => (
+          <a
+            key={item.href}
+            className="more-menu__link"
+            href={item.href}
+            role="menuitem"
+            aria-current={currentPath === normalizePath(item.href) ? 'page' : undefined}
+            onClick={(event) => {
+              setIsOpen(false);
+              onNavigate?.(event);
+            }}
+          >
+            {item.label}
+          </a>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function SettingsDropdown({ mobile = false }) {
@@ -183,6 +265,11 @@ function UserArea() {
         </button>
         <ul className="account-menu" data-account-menu="" role="menu">
           <li>
+            <a className="account-option is-hidden" href="/admin/dashboard.html" data-account-admin="" role="menuitem" aria-hidden="true" tabIndex="-1">
+              Adminbereich
+            </a>
+          </li>
+          <li>
             <a className="account-option" href="/profile.html" data-account-profile="" role="menuitem">
               Profil
             </a>
@@ -200,6 +287,10 @@ function UserArea() {
 
 export function Header() {
   const [isNavOpen, setIsNavOpen] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(navItems.length);
+  const navViewportRef = useRef(null);
+  const navMeasureRef = useRef(null);
+  const currentPath = getCurrentPath();
 
   useEffect(() => {
     if (!isNavOpen || typeof window === 'undefined') {
@@ -239,6 +330,72 @@ export function Header() {
     setIsNavOpen((open) => !open);
   };
 
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const updateVisibleItems = () => {
+      if (window.innerWidth <= DESKTOP_NAV_BREAKPOINT) {
+        setVisibleCount(navItems.length);
+        return;
+      }
+
+      const viewport = navViewportRef.current;
+      const measure = navMeasureRef.current;
+      if (!viewport || !measure) {
+        return;
+      }
+
+      const itemWidths = Array.from(measure.querySelectorAll('[data-nav-measure="item"]')).map((element) =>
+        Math.ceil(element.getBoundingClientRect().width)
+      );
+
+      const availableWidth = Math.floor(viewport.clientWidth);
+      if (!availableWidth || !itemWidths.length) {
+        setVisibleCount(navItems.length);
+        return;
+      }
+
+      let usedWidth = 0;
+      let nextVisibleCount = itemWidths.length;
+
+      for (let index = 0; index < itemWidths.length; index += 1) {
+        const reserveWidth = index < itemWidths.length - 1 ? MEHR_BUTTON_ESTIMATE : 0;
+        if (usedWidth + itemWidths[index] + reserveWidth > availableWidth) {
+          nextVisibleCount = Math.max(index, 1);
+          break;
+        }
+        usedWidth += itemWidths[index];
+      }
+
+      setVisibleCount(nextVisibleCount);
+    };
+
+    updateVisibleItems();
+
+    const resizeObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => updateVisibleItems())
+      : null;
+
+    if (resizeObserver && navViewportRef.current) {
+      resizeObserver.observe(navViewportRef.current);
+    }
+    if (resizeObserver && navMeasureRef.current) {
+      resizeObserver.observe(navMeasureRef.current);
+    }
+
+    window.addEventListener('resize', updateVisibleItems);
+
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', updateVisibleItems);
+    };
+  }, []);
+
+  const visibleItems = navItems.slice(0, visibleCount);
+  const overflowItems = navItems.slice(visibleCount);
+
   return (
     <header className="hm-navbar" data-nav="" data-i18n-attr="aria-label:common.nav.primary" role="navigation" aria-label="Main navigation">
       <div className="hm-navbar__inner header">
@@ -252,9 +409,30 @@ export function Header() {
         </div>
 
         <div className="header-center">
-          <nav className="nav-links" aria-label="Main navigation">
-            <NavLinks />
-          </nav>
+          <div className="nav-desktop-shell">
+            <nav ref={navViewportRef} className="nav-links nav-links--desktop" aria-label="Main navigation">
+              {visibleItems.map((item) => (
+                <a
+                  key={item.href}
+                  className="nav-link"
+                  href={item.href}
+                  data-route={item.href.replace(/^\//, '')}
+                  {...(item.key ? { 'data-i18n': item.key } : {})}
+                  aria-current={currentPath === normalizePath(item.href) ? 'page' : undefined}
+                >
+                  {item.label}
+                </a>
+              ))}
+              <MoreMenu items={overflowItems} currentPath={currentPath} />
+            </nav>
+            <div ref={navMeasureRef} className="nav-links nav-links--measure" aria-hidden="true">
+              {navItems.map((item) => (
+                <span key={item.href} className="nav-link" data-nav-measure="item">
+                  {item.label}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="header-right">

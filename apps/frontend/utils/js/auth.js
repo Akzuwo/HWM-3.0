@@ -446,26 +446,7 @@ function updateAuthStatus() {
 }
 
 function getAdminNavButton() {
-    const links = document.querySelector('.nav-links');
-    if (!links) {
-        return null;
-    }
-    let button = links.querySelector('[data-admin-link]');
-    if (!button) {
-        button = document.createElement('a');
-        button.className = 'nav-link nav-link--admin';
-        button.href = AUTH_PATHS.admin;
-        button.setAttribute('data-admin-link', 'true');
-        button.textContent = LOGIN_TEXT.adminNavButton || 'Admin';
-        button.hidden = true;
-        const authButton = links.querySelector('[data-auth-button]');
-        if (authButton && authButton.parentElement === links) {
-            links.insertBefore(button, authButton);
-        } else {
-            links.appendChild(button);
-        }
-    }
-    return button;
+    return null;
 }
 
 function updateAdminNavButton() {
@@ -514,6 +495,7 @@ function syncAccountControls() {
         const toggle = control.querySelector('[data-account-toggle]');
         const label = control.querySelector('[data-account-label]');
         const menu = control.querySelector('[data-account-menu]');
+        const adminLink = control.querySelector('[data-account-admin]');
         const profileLink = control.querySelector('[data-account-profile]');
         const logoutButton = control.querySelector('[data-account-logout]');
 
@@ -528,6 +510,17 @@ function syncAccountControls() {
         }
         if (profileLink) {
             profileLink.textContent = profileLabel;
+        }
+        if (adminLink) {
+            adminLink.textContent = LOGIN_TEXT.adminNavButton || 'Admin';
+            const visible = isAdmin();
+            adminLink.classList.toggle('is-hidden', !visible);
+            adminLink.setAttribute('aria-hidden', visible ? 'false' : 'true');
+            if (visible) {
+                adminLink.removeAttribute('tabindex');
+            } else {
+                adminLink.setAttribute('tabindex', '-1');
+            }
         }
         if (logoutButton) {
             logoutButton.textContent = logoutLabel;

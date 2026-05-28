@@ -2,6 +2,7 @@ import { AdminDashboardPage } from '../pages/AdminDashboardPage';
 import { CalendarPage } from '../pages/CalendarPage';
 import { ChangelogPage } from '../pages/ChangelogPage';
 import { CurrentSubjectPage } from '../pages/CurrentSubjectPage';
+import { DeparturesPage } from '../pages/DeparturesPage';
 import { DayOverviewPage } from '../pages/DayOverviewPage';
 import { GradeCalculatorPage } from '../pages/GradeCalculatorPage';
 import { HelpPage } from '../pages/HelpPage';
@@ -42,6 +43,10 @@ const PAGE_MAP = {
   'current-subject': {
     title: 'Current Subject - Homework Manager',
     component: CurrentSubjectPage
+  },
+  departures: {
+    title: 'Abfahrten - Homework Manager',
+    component: DeparturesPage
   },
   'day-overview': {
     title: 'Daily Overview - Homework Manager',
