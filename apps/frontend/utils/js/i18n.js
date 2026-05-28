@@ -25,6 +25,9 @@
           changelog: 'Changelog',
           navigation: 'Footer-Navigation',
         },
+        actions: {
+          more: 'Mehr',
+        },
         language: {
           menuLabel: 'Sprache auswählen',
         },
@@ -37,6 +40,7 @@
       home: {
         pageTitle: 'Homework Manager',
         heroTitle: 'HWM 3.0',
+        heroCta: 'Mehr über HWM',
         description: {
           lead:
             'Homework Manager 3.0 bringt die Plattform auf einen modernen Frontend-Stack mit React JS und Tailwind CSS.',
@@ -51,6 +55,23 @@
         releaseGoal: {
           title: 'Release-Ziel',
           body: 'Hinweis: Der Release von 2.0 wurde aufgrund mangelnder Kapazitäten und Qualitätssicherung auf Juli 2026 verschoben.',
+        },
+        news: {
+          label: 'News',
+          items: {
+            primary: {
+              title: 'News-Platzhalter',
+              summary:
+                'Hier erscheint bald automatisch die Vorschau auf den neuesten News-Eintrag aus dem Adminpanel.',
+              meta: 'Demnächst',
+            },
+            secondary: {
+              title: 'Weiterer News-Platzhalter',
+              summary:
+                'Sobald das News-System angebunden ist, wird hier die zweitneueste Meldung als kompakte Vorschau angezeigt.',
+              meta: 'Demnächst',
+            },
+          },
         },
         release: {
           title: 'Update Hinweis 3.0',
@@ -83,6 +104,34 @@
           },
           cta: 'Zur Anleitung',
         },
+      },
+      about: {
+        pageTitle: 'Mehr über HWM',
+        title: 'Mehr über HWM',
+        cardLabel: 'HWM',
+        cards: {
+          guide: {
+            title: 'Anleitung',
+            summary:
+              'Hier findest du die wichtigsten Schritte zur Nutzung von HWM 3.0. Die Anleitung hilft dir beim Einstieg, erklärt zentrale Funktionen und zeigt, wie Lehrkräfte, Schüler:innen und Klassen-Admins effizient mit der Plattform arbeiten.',
+          },
+          history: {
+            title: 'Geschichte von HWM',
+            summary:
+              'Diese Seite wird später erklären, wie der Homework Manager entstanden ist, welche Ideen hinter dem Projekt stecken und wie sich HWM von den ersten Versionen bis zu HWM 3.0 weiterentwickelt hat.',
+          },
+          changelog: {
+            title: 'Changelog',
+            summary:
+              'Im Changelog findest du die wichtigsten Änderungen, Verbesserungen und neuen Funktionen. So bleibt nachvollziehbar, was sich an HWM 3.0 verändert hat und welche Updates neu dazugekommen sind.',
+          },
+        },
+      },
+      history: {
+        pageTitle: 'Geschichte von HWM',
+        title: 'Geschichte von HWM',
+        placeholder: 'Diese Seite wird noch entwickelt.',
+        back: 'Zur Auswahl',
       },
       changelog: {
         pageTitle: 'Changelog',
@@ -868,6 +917,9 @@
           changelog: 'Changelog',
           navigation: 'Footer navigation',
         },
+        actions: {
+          more: 'More',
+        },
         language: {
           menuLabel: 'Select language',
         },
@@ -880,6 +932,7 @@
       home: {
         pageTitle: 'Homework Manager',
         heroTitle: 'HWM 3.0',
+        heroCta: 'More about HWM',
         description: {
           lead:
             'Homework Manager 3.0 brings the platform onto a modern frontend stack with React JS and Tailwind CSS.',
@@ -894,6 +947,23 @@
         releaseGoal: {
           title: 'Release goal',
           body: 'Notice: The 2.0 release has been moved to July 2026 due to limited capacity and quality assurance.',
+        },
+        news: {
+          label: 'News',
+          items: {
+            primary: {
+              title: 'News placeholder',
+              summary:
+                'A preview of the newest admin-created news entry will appear here automatically in the future.',
+              meta: 'Coming soon',
+            },
+            secondary: {
+              title: 'Second news placeholder',
+              summary:
+                'Once the news system is connected, this card will show the second newest update as a compact preview.',
+              meta: 'Coming soon',
+            },
+          },
         },
         release: {
           title: 'Update note 3.0',
@@ -926,6 +996,34 @@
           },
           cta: 'Open the guide',
         },
+      },
+      about: {
+        pageTitle: 'More about HWM',
+        title: 'More about HWM',
+        cardLabel: 'HWM',
+        cards: {
+          guide: {
+            title: 'Guide',
+            summary:
+              'This guide covers the key steps for using HWM 3.0. It helps new users get started, explains the core features, and shows how teachers, students, and class admins can work efficiently with the platform.',
+          },
+          history: {
+            title: 'History of HWM',
+            summary:
+              'This page will later explain how the Homework Manager came to life, which ideas shaped the project, and how HWM evolved from the earliest versions to HWM 3.0.',
+          },
+          changelog: {
+            title: 'Changelog',
+            summary:
+              'The changelog highlights important changes, improvements, and new features. It makes it easy to follow what changed in HWM 3.0 and which updates were added over time.',
+          },
+        },
+      },
+      history: {
+        pageTitle: 'History of HWM',
+        title: 'History of HWM',
+        placeholder: 'This page is still being developed.',
+        back: 'Back to selection',
       },
       changelog: {
         pageTitle: 'Changelog',
@@ -1682,6 +1780,9 @@
           changelog: 'Changelog',
           navigation: 'Navigazione footer',
         },
+        actions: {
+          more: 'Altro',
+        },
         language: {
           menuLabel: 'Seleziona la lingua',
         },
@@ -1694,6 +1795,7 @@
       home: {
         pageTitle: 'Homework Manager',
         heroTitle: 'HWM 3.0',
+        heroCta: 'Più su HWM',
         description: {
           lead:
             'Homework Manager 3.0 porta la piattaforma su uno stack frontend moderno con React JS e Tailwind CSS.',
@@ -1708,6 +1810,23 @@
         releaseGoal: {
           title: 'Obiettivo di rilascio',
           body: 'Avviso: la release 2.0 è stata rimandata a luglio 2026 per carenza di capacità e di controllo qualità.',
+        },
+        news: {
+          label: 'News',
+          items: {
+            primary: {
+              title: 'Segnaposto news',
+              summary:
+                'Qui apparirà automaticamente l’anteprima della notizia più recente creata nel pannello admin.',
+              meta: 'Prossimamente',
+            },
+            secondary: {
+              title: 'Secondo segnaposto news',
+              summary:
+                'Quando il sistema news sarà collegato, questa card mostrerà la seconda novità più recente in forma compatta.',
+              meta: 'Prossimamente',
+            },
+          },
         },
         release: {
           title: 'Nota di aggiornamento 3.0',
@@ -1740,6 +1859,32 @@
           },
           cta: 'Apri la guida',
         },
+      },
+      about: {
+        pageTitle: 'Più su HWM',
+        title: 'Più su HWM',
+        subtitle: 'Guida, storia del progetto e aggiornamenti principali raccolti in una panoramica compatta.',
+        cardLabel: 'HWM',
+        cards: {
+          guide: {
+            title: 'Guida',
+            summary: 'I passaggi più importanti per docenti, studenti e admin di classe in un solo colpo d’occhio.',
+          },
+          history: {
+            title: 'Storia di HWM',
+            summary: 'Come da una semplice idea è nato l’Homework Manager.',
+          },
+          changelog: {
+            title: 'Changelog',
+            summary: 'Tutte le modifiche importanti, i miglioramenti e le nuove funzioni in breve.',
+          },
+        },
+      },
+      history: {
+        pageTitle: 'Storia di HWM',
+        title: 'Storia di HWM',
+        placeholder: 'Questa pagina è ancora in fase di sviluppo.',
+        back: 'Torna alla selezione',
       },
       changelog: {
         pageTitle: 'Changelog',
@@ -2497,6 +2642,9 @@
           changelog: 'Journal des modifications',
           navigation: 'Navigation du pied de page',
         },
+        actions: {
+          more: 'Plus',
+        },
         language: {
           menuLabel: 'Sélectionner la langue',
         },
@@ -2509,6 +2657,7 @@
       home: {
         pageTitle: 'Homework Manager',
         heroTitle: 'HWM 3.0',
+        heroCta: 'Plus sur HWM',
         description: {
           lead:
             'Homework Manager 3.0 fait passer la plateforme sur une base frontend moderne avec React JS et Tailwind CSS.',
@@ -2523,6 +2672,23 @@
         releaseGoal: {
           title: 'Objectif de sortie',
           body: 'Information : la sortie de la version 2.0 est reportée à juillet 2026 en raison de capacités limitées et de l’assurance qualité.',
+        },
+        news: {
+          label: 'News',
+          items: {
+            primary: {
+              title: 'Emplacement d’actualité',
+              summary:
+                'Un aperçu de la publication la plus récente créée dans l’admin apparaîtra bientôt automatiquement ici.',
+              meta: 'Bientôt',
+            },
+            secondary: {
+              title: 'Deuxième emplacement d’actualité',
+              summary:
+                'Une fois le système de news branché, cette carte affichera la deuxième mise à jour la plus récente.',
+              meta: 'Bientôt',
+            },
+          },
         },
         release: {
           title: 'Note de mise à jour 3.0',
@@ -2555,6 +2721,32 @@
           },
           cta: 'Ouvrir le guide',
         },
+      },
+      about: {
+        pageTitle: 'Plus sur HWM',
+        title: 'Plus sur HWM',
+        subtitle: 'Guide, histoire du projet et évolutions majeures réunis dans un aperçu compact.',
+        cardLabel: 'HWM',
+        cards: {
+          guide: {
+            title: 'Guide',
+            summary: 'Les étapes essentielles pour les enseignant·e·s, les élèves et les admins de classe en un coup d’œil.',
+          },
+          history: {
+            title: 'Histoire de HWM',
+            summary: 'Comment une idée simple est devenue Homework Manager.',
+          },
+          changelog: {
+            title: 'Changelog',
+            summary: 'Toutes les évolutions importantes, améliorations et nouvelles fonctions en un aperçu.',
+          },
+        },
+      },
+      history: {
+        pageTitle: 'Histoire de HWM',
+        title: 'Histoire de HWM',
+        placeholder: 'Cette page est encore en cours de développement.',
+        back: 'Retour à la sélection',
       },
       changelog: {
         pageTitle: 'Journal des modifications',
