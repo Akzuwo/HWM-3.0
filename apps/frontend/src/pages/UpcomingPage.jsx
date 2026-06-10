@@ -1,11 +1,11 @@
-import { AppLayout } from '../components/AppLayout';
+import { GlassSkeleton } from '../components/GlassSkeleton';
 import { usePageSetup } from '../hooks/usePageSetup';
 
 export function UpcomingPage() {
   usePageSetup({ bodyClass: 'upcoming-page', scripts: ['calendarPermissions', 'classSelector', 'upcoming'] });
 
   return (
-    <AppLayout>
+    <>
       <main className="upcoming" id="main">
         <header className="upcoming__header">
           <div className="upcoming__heading">
@@ -29,9 +29,7 @@ export function UpcomingPage() {
           Dieses Feature wird aktuell umgebaut.
         </p>
         <section className="upcoming__list" id="upcoming-list" role="list" aria-live="polite" aria-busy="true">
-          <p className="upcoming__status upcoming__status--loading" data-i18n="upcoming.loading">
-            Loading data...
-          </p>
+          <GlassSkeleton label="Anstehende Einträge werden geladen" rows={4} />
         </section>
         <div className="upcoming__actions">
           <button type="button" className="upcoming__button" id="back-button" aria-label="Back to the home page" data-i18n-attr="aria-label:upcoming.backLabel">
@@ -39,7 +37,7 @@ export function UpcomingPage() {
           </button>
         </div>
       </main>
-    </AppLayout>
+    </>
   );
 }
 

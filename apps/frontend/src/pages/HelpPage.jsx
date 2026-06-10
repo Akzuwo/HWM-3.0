@@ -1,4 +1,3 @@
-import { AppLayout } from '../components/AppLayout';
 import { usePageSetup } from '../hooks/usePageSetup';
 
 export function HelpPage() {
@@ -8,7 +7,7 @@ export function HelpPage() {
   });
 
   return (
-    <AppLayout>
+    <>
       <main className="help-main" id="main">
         <section className="help-hero">
           <h1 data-i18n="help.title">User guide</h1>
@@ -102,7 +101,7 @@ export function HelpPage() {
           </ul>
         </section>
       </main>
-    </AppLayout>
+    </>
   );
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 
 const navItems = [
   { href: '/', label: 'Startseite', key: 'common.nav.home' },
@@ -61,19 +62,6 @@ function GlobeIcon({ className = '' }) {
   );
 }
 
-function getCurrentPath() {
-  if (typeof window === 'undefined') {
-    return '/';
-  }
-
-  const path = normalizePath(window.location.pathname);
-  if (!path) {
-    return '/';
-  }
-
-  return path;
-}
-
 function normalizePath(pathname) {
   const path = String(pathname || '').toLowerCase();
   if (!path || path === '/') {
@@ -83,21 +71,19 @@ function normalizePath(pathname) {
   return path.replace(/\/index\.html$/, '').replace(/\/+$/, '') || '/';
 }
 
-function NavLinks({ onNavigate }) {
-  const currentPath = getCurrentPath();
-
+function NavLinks({ currentPath, onNavigate }) {
   return navItems.map((item) => (
-    <a
+    <Link
       key={item.href}
       className="nav-link"
-      href={item.href}
+      to={item.href}
       data-route={item.href.replace(/^\//, '')}
       {...(item.key ? { 'data-i18n': item.key } : {})}
       onClick={onNavigate}
       aria-current={currentPath === normalizePath(item.href) ? 'page' : undefined}
     >
       {item.label}
-    </a>
+    </Link>
   ));
 }
 
@@ -151,10 +137,10 @@ function MoreMenu({ items, currentPath, onNavigate }) {
       </button>
       <div className="more-menu__panel" role="menu">
         {items.map((item) => (
-          <a
+          <Link
             key={item.href}
             className="more-menu__link"
-            href={item.href}
+            to={item.href}
             role="menuitem"
             aria-current={currentPath === normalizePath(item.href) ? 'page' : undefined}
             onClick={(event) => {
@@ -163,7 +149,7 @@ function MoreMenu({ items, currentPath, onNavigate }) {
             }}
           >
             {item.label}
-          </a>
+          </Link>
         ))}
       </div>
     </div>
@@ -265,14 +251,14 @@ function UserArea() {
         </button>
         <ul className="account-menu" data-account-menu="" role="menu">
           <li>
-            <a className="account-option is-hidden" href="/admin/dashboard" data-account-admin="" role="menuitem" aria-hidden="true" tabIndex="-1">
+            <Link className="account-option is-hidden" to="/admin/dashboard" data-account-admin="" role="menuitem" aria-hidden="true" tabIndex="-1">
               Adminbereich
-            </a>
+            </Link>
           </li>
           <li>
-            <a className="account-option" href="/profile" data-account-profile="" role="menuitem">
+            <Link className="account-option" to="/profile" data-account-profile="" role="menuitem">
               Profil
-            </a>
+            </Link>
           </li>
           <li>
             <button className="account-option" type="button" data-account-logout="" role="menuitem">
@@ -286,11 +272,12 @@ function UserArea() {
 }
 
 export function Header() {
+  const location = useLocation();
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(navItems.length);
   const navViewportRef = useRef(null);
   const navMeasureRef = useRef(null);
-  const currentPath = getCurrentPath();
+  const currentPath = normalizePath(location.pathname);
 
   useEffect(() => {
     if (!isNavOpen || typeof window === 'undefined') {
@@ -397,31 +384,32 @@ export function Header() {
   const overflowItems = navItems.slice(visibleCount);
 
   return (
-    <header className="hm-navbar" data-nav="" data-i18n-attr="aria-label:common.nav.primary" role="navigation" aria-label="Main navigation">
-      <div className="hm-navbar__inner header">
+    <>
+      <header className="hm-navbar" data-nav="" data-i18n-attr="aria-label:common.nav.primary" role="navigation" aria-label="Main navigation">
+        <div className="hm-navbar__inner header">
         <div className="header-left logo">
-          <a className="logo-link" href="/" data-brand-link="">
+          <Link className="logo-link" to="/" data-brand-link="">
             <img data-logo="" alt="" aria-hidden="true" width="32" height="32" src="/media/logo.png" />
             <span className="brand-mark" data-i18n="common.appName">
               Homework Manager
             </span>
-          </a>
+          </Link>
         </div>
 
         <div className="header-center">
           <div className="nav-desktop-shell">
             <nav ref={navViewportRef} className="nav-links nav-links--desktop" aria-label="Main navigation">
               {visibleItems.map((item) => (
-                <a
+                <Link
                   key={item.href}
                   className="nav-link"
-                  href={item.href}
+                  to={item.href}
                   data-route={item.href.replace(/^\//, '')}
                   {...(item.key ? { 'data-i18n': item.key } : {})}
                   aria-current={currentPath === normalizePath(item.href) ? 'page' : undefined}
                 >
                   {item.label}
-                </a>
+                </Link>
               ))}
               <MoreMenu items={overflowItems} currentPath={currentPath} />
             </nav>
@@ -461,7 +449,8 @@ export function Header() {
             </button>
           </div>
         </div>
-      </div>
+        </div>
+      </header>
 
       <div
         className={`hm-navbar__overlay${isNavOpen ? ' is-open' : ''}`}
@@ -481,12 +470,12 @@ export function Header() {
           <div className="mobile-sidebar__header">
             <div className="mobile-sidebar__title-group">
               <span className="mobile-sidebar__eyebrow">Navigation</span>
-              <a className="mobile-sidebar__brand" href="/" onClick={closeNav}>
+              <Link className="mobile-sidebar__brand" to="/" onClick={closeNav}>
                 <img alt="" aria-hidden="true" width="28" height="28" src="/media/logo.png" />
                 <span className="mobile-sidebar__title" data-i18n="common.appName">
                   Homework Manager
                 </span>
-              </a>
+              </Link>
             </div>
             <button className="mobile-sidebar__close" type="button" aria-label="Close menu" onClick={closeNav}>
               <span aria-hidden="true">X</span>
@@ -498,7 +487,7 @@ export function Header() {
               Navigation
             </span>
             <nav className="nav-links nav-links--mobile" aria-label="Main navigation">
-              <NavLinks onNavigate={closeNav} />
+              <NavLinks currentPath={currentPath} onNavigate={closeNav} />
             </nav>
           </section>
 
@@ -513,6 +502,6 @@ export function Header() {
           </section>
         </div>
       </aside>
-    </header>
+    </>
   );
 }

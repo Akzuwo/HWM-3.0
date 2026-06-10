@@ -189,7 +189,10 @@ import { resolveApiUrl } from './api-client.js';
       try {
         await apiFetch('/api/me', 'DELETE')
         window.showToast && window.showToast(t('deleteSuccess', 'Account deleted.'))
-        setTimeout(() => { window.location.href = '/' }, 800)
+        setTimeout(() => {
+          if (typeof window.hmNavigate === 'function') window.hmNavigate('/')
+          else window.location.href = '/'
+        }, 800)
       } catch (err) {
         console.error('Failed to delete account', err)
         window.showToast && window.showToast(t('deleteError', 'Could not delete the account.'))

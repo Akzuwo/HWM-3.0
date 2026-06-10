@@ -246,7 +246,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (elements.back && elements.back.dataset.weeklyPreviewBound !== 'true') {
     elements.back.addEventListener('click', () => {
-      window.location.href = 'index.html';
+      if (typeof window.hmNavigate === 'function') {
+        window.hmNavigate('/');
+      } else {
+        window.location.href = 'index.html';
+      }
     });
     elements.back.dataset.weeklyPreviewBound = 'true';
   }

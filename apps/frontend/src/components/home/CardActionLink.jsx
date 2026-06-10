@@ -15,6 +15,14 @@ export function CardActionLink({ href, disabled = false, todoKey = '' }) {
     );
   }
 
+  if (/^https?:\/\//i.test(href)) {
+    return (
+      <a className="home-button home-button--ghost home-button--compact" href={href} rel="noopener noreferrer">
+        <span data-i18n="common.actions.more">Mehr</span>
+      </a>
+    );
+  }
+
   return (
     <Link className="home-button home-button--ghost home-button--compact" to={href}>
       <span data-i18n="common.actions.more">Mehr</span>

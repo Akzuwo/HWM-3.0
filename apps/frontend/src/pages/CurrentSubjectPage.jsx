@@ -1,4 +1,4 @@
-import { AppLayout } from '../components/AppLayout';
+import { Link } from 'react-router-dom';
 import { usePageSetup } from '../hooks/usePageSetup';
 
 export function CurrentSubjectPage() {
@@ -8,7 +8,7 @@ export function CurrentSubjectPage() {
   });
 
   return (
-    <AppLayout>
+    <>
       <main className="current-subject" data-current-subject="" id="main">
         <header className="current-subject__header">
           <div className="current-subject__header-main">
@@ -113,21 +113,21 @@ export function CurrentSubjectPage() {
         <hr className="current-subject__divider" />
 
         <div className="current-subject__actions">
-          <a className="current-subject__button current-subject__button--primary" href="/tagesuebersicht.html">
+          <Link className="current-subject__button current-subject__button--primary" to="/tagesuebersicht">
             <span aria-hidden="true">📅</span>
             <span data-i18n="currentSubject.actions.dayOverview">Daily Overview</span>
-          </a>
-          <a className="current-subject__button current-subject__button--secondary" href="/timetable-week.html">
+          </Link>
+          <Link className="current-subject__button current-subject__button--secondary" to="/timetable-week">
             <span aria-hidden="true">▦</span>
             <span>Wochenansicht</span>
-          </a>
-          <a className="current-subject__button current-subject__button--secondary" href="/index.html">
+          </Link>
+          <Link className="current-subject__button current-subject__button--secondary" to="/">
             <span aria-hidden="true">◀️</span>
             <span data-i18n="currentSubject.actions.back">Back</span>
-          </a>
+          </Link>
         </div>
       </main>
-    </AppLayout>
+    </>
   );
 }
 

@@ -1,4 +1,3 @@
-import { AppLayout } from '../components/AppLayout';
 import { usePageSetup } from '../hooks/usePageSetup';
 
 export function ProfilePage() {
@@ -8,7 +7,7 @@ export function ProfilePage() {
   });
 
   return (
-    <AppLayout>
+    <>
       <main id="main" className="profile">
         <div className="profile__container">
           <header className="profile__header">
@@ -127,7 +126,7 @@ export function ProfilePage() {
           </section>
         </div>
       </main>
-    </AppLayout>
+    </>
   );
 }
 

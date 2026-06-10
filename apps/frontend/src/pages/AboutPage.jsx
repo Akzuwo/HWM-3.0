@@ -1,4 +1,3 @@
-import { AppLayout } from '../components/AppLayout';
 import { AboutChoiceCard } from '../components/home/AboutChoiceCard';
 import { usePageSetup } from '../hooks/usePageSetup';
 
@@ -6,7 +5,7 @@ export function AboutPage() {
   usePageSetup({ bodyClass: 'about-page' });
 
   return (
-    <AppLayout mainClassName="hm-react-main--landing" shellClassName="hm-react-shell--landing">
+    <>
       <main className="about-page" id="main">
         <div className="about-shell">
           <section className="page-header about-header">
@@ -36,6 +35,6 @@ export function AboutPage() {
           </section>
         </div>
       </main>
-    </AppLayout>
+    </>
   );
 }
