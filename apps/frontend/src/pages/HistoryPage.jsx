@@ -1,12 +1,11 @@
 import { Link } from 'react-router-dom';
-import { AppLayout } from '../components/AppLayout';
 import { usePageSetup } from '../hooks/usePageSetup';
 
 export function HistoryPage() {
   usePageSetup({ bodyClass: 'history-page' });
 
   return (
-    <AppLayout mainClassName="hm-react-main--landing" shellClassName="hm-react-shell--landing">
+    <>
       <main className="history-page" id="main">
         <div className="about-shell history-shell">
           <section className="page-header history-header">
@@ -22,6 +21,6 @@ export function HistoryPage() {
           </section>
         </div>
       </main>
-    </AppLayout>
+    </>
   );
 }

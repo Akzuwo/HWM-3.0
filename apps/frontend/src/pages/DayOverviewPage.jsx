@@ -1,4 +1,5 @@
-import { AppLayout } from '../components/AppLayout';
+import { Link } from 'react-router-dom';
+import { GlassSkeleton } from '../components/GlassSkeleton';
 import { usePageSetup } from '../hooks/usePageSetup';
 
 export function DayOverviewPage() {
@@ -8,7 +9,7 @@ export function DayOverviewPage() {
   });
 
   return (
-    <AppLayout>
+    <>
       <main className="page-container" id="main">
         <header className="page-header">
           <div className="page-title">
@@ -26,20 +27,20 @@ export function DayOverviewPage() {
                 </option>
               </select>
             </div>
-            <a className="hm-back-link" href="/stundenplan.html" data-i18n="dayOverview.back">
+            <Link className="hm-back-link" to="/stundenplan" data-i18n="dayOverview.back">
               ◀️ Back
-            </a>
-            <a className="hm-back-link" href="/timetable-week.html">
+            </Link>
+            <Link className="hm-back-link" to="/timetable-week">
               Wochenansicht
-            </a>
+            </Link>
           </div>
         </header>
 
-        <div id="overview" className="overview-grid" data-i18n="dayOverview.loading">
-          Loading data...
+        <div id="overview" className="overview-grid">
+          <GlassSkeleton label="Tagesübersicht wird geladen" rows={4} />
         </div>
       </main>
-    </AppLayout>
+    </>
   );
 }
 

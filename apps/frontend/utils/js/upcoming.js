@@ -309,7 +309,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (backButton && backButton.dataset.upcomingBound !== 'true') {
     backButton.addEventListener('click', () => {
-      window.location.href = 'index.html';
+      if (typeof window.hmNavigate === 'function') {
+        window.hmNavigate('/');
+      } else {
+        window.location.href = 'index.html';
+      }
     });
     backButton.dataset.upcomingBound = 'true';
   }

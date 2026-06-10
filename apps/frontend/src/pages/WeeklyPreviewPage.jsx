@@ -1,11 +1,11 @@
-import { AppLayout } from '../components/AppLayout';
+import { GlassSkeleton } from '../components/GlassSkeleton';
 import { usePageSetup } from '../hooks/usePageSetup';
 
 export function WeeklyPreviewPage() {
   usePageSetup({ bodyClass: 'weekly-preview-page', scripts: ['calendarPermissions', 'classSelector', 'weeklyPreview'] });
 
   return (
-    <AppLayout>
+    <>
       <main className="weekly-preview" id="main">
         <header className="weekly-preview__header">
           <div className="weekly-preview__heading">
@@ -31,6 +31,7 @@ export function WeeklyPreviewPage() {
           <p className="weekly-preview__status weekly-preview__status--loading" id="weekly-preview-status" data-i18n="weeklyPreview.loading">
             Generating preview...
           </p>
+          <GlassSkeleton label="Wochenvorschau wird erstellt" rows={4} />
           <p className="weekly-preview__intro" id="weekly-preview-intro" hidden></p>
           <ul className="weekly-preview__list" id="weekly-preview-list" hidden></ul>
           <p className="weekly-preview__meta" id="weekly-preview-meta" hidden></p>
@@ -44,7 +45,7 @@ export function WeeklyPreviewPage() {
           </button>
         </div>
       </main>
-    </AppLayout>
+    </>
   );
 }
 

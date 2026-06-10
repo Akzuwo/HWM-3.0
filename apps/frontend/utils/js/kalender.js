@@ -367,7 +367,11 @@ function redirectToLogin() {
   if (typeof window === 'undefined') {
     return;
   }
-  window.location.href = 'login.html';
+  if (typeof window.hmNavigate === 'function') {
+    window.hmNavigate('/login');
+  } else {
+    window.location.href = 'login.html';
+  }
 }
 
 const modalText = {
@@ -1485,7 +1489,11 @@ function initActionBar() {
 
   if (backBtn) {
     backBtn.addEventListener('click', () => {
-      window.location.href = 'index.html';
+      if (typeof window.hmNavigate === 'function') {
+        window.hmNavigate('/');
+      } else {
+        window.location.href = 'index.html';
+      }
     });
   }
 }
@@ -1945,6 +1953,22 @@ function prepareCalendarContainer(calendarEl) {
   calendarEl.innerHTML = '';
 }
 
+function createCalendarSkeleton(message) {
+  const placeholder = document.createElement('div');
+  placeholder.className = 'loading-glass-placeholder loading-glass-placeholder--compact';
+  placeholder.setAttribute('role', 'status');
+  placeholder.setAttribute('aria-label', message);
+
+  for (let index = 0; index < 5; index += 1) {
+    const row = document.createElement('span');
+    row.className = 'loading-glass-placeholder__row';
+    row.setAttribute('aria-hidden', 'true');
+    placeholder.appendChild(row);
+  }
+
+  return placeholder;
+}
+
 function showCalendarLoading(calendarEl, message) {
   calendarEl.setAttribute('data-state', 'loading');
   calendarEl.setAttribute('aria-busy', 'true');
@@ -1954,16 +1978,7 @@ function showCalendarLoading(calendarEl, message) {
   }
   calendarEl.setAttribute('role', 'status');
   calendarEl.setAttribute('aria-live', 'polite');
-  calendarEl.replaceChildren(
-    Object.assign(document.createElement('span'), {
-      className: 'calendar-loading__spinner',
-      ariaHidden: 'true'
-    }),
-    Object.assign(document.createElement('span'), {
-      className: 'calendar-loading__text',
-      textContent: message
-    })
-  );
+  calendarEl.replaceChildren(createCalendarSkeleton(message));
 }
 
 function showCalendarError(calendarEl, message) {

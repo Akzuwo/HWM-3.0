@@ -7,7 +7,6 @@ const scriptLoaders = {
   auth: () => import('../../utils/js/auth.js'),
   classSelector: () => import('../../utils/js/class-selector.js'),
   calendarPermissions: () => import('../../utils/js/calendar-permissions.js'),
-  pageTransitions: () => import('../../assets/page-transitions.js'),
   home: () => import('../../utils/js/home.js'),
   changelog: () => import('../../utils/js/changelog.js'),
   privacy: () => import('../../utils/js/privacy.js'),
@@ -25,8 +24,9 @@ const scriptLoaders = {
   adminDashboard: () => import('../../utils/js/admin-dashboard.js')
 };
 
-const commonScripts = ['i18n', 'i18nAnim', 'overlay', 'toast', 'modal', 'auth', 'pageTransitions'];
+const commonScripts = ['i18n', 'i18nAnim', 'overlay', 'toast', 'modal', 'auth'];
 const loadedScripts = new Set();
+let headerReadyDispatched = false;
 
 export async function loadLegacyScripts(names = []) {
   const queue = [...commonScripts, ...names];
@@ -43,14 +43,15 @@ export async function loadLegacyScripts(names = []) {
 }
 
 export function dispatchLegacyReady() {
-  const header = document.querySelector('.hm-navbar');
   window.hmI18n?.apply?.();
-  window.dispatchEvent(
-    new CustomEvent('hm:header-ready', {
-      detail: { header }
-    })
-  );
+  if (!headerReadyDispatched) {
+    headerReadyDispatched = true;
+    window.dispatchEvent(
+      new CustomEvent('hm:header-ready', {
+        detail: { header: document.querySelector('.hm-navbar') }
+      })
+    );
+  }
   document.dispatchEvent(new Event('DOMContentLoaded', { bubbles: true }));
-  window.dispatchEvent(new Event('DOMContentLoaded'));
   window.hmI18n?.apply?.();
 }

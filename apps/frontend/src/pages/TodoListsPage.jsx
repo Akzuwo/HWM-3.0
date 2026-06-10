@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AppLayout } from '../components/AppLayout';
+import { GlassSkeleton } from '../components/GlassSkeleton';
 import { usePageSetup } from '../hooks/usePageSetup';
 import { resolveApiBase } from '../../utils/js/api-client';
 
@@ -280,7 +280,7 @@ export function TodoListsPage() {
   }
 
   return (
-    <AppLayout>
+    <>
       <main className="todo-lists todo-lists--compact" id="main">
         <header className="todo-lists__header todo-lists__header--compact">
           <div>
@@ -357,7 +357,7 @@ export function TodoListsPage() {
               <span className="todo-sort-label">Nach Datum</span>
             </div>
 
-            {status === 'loading' ? <p className="todo-lists__empty">ToDos werden geladen...</p> : null}
+            {status === 'loading' ? <GlassSkeleton label="ToDos werden geladen" rows={4} compact /> : null}
             {status !== 'loading' && visibleTodos.length === 0 ? <p className="todo-lists__empty">Keine passenden ToDos.</p> : null}
 
             <div className="todo-cards todo-cards--compact" role="list">
@@ -462,6 +462,6 @@ export function TodoListsPage() {
           </section>
         </section>
       </main>
-    </AppLayout>
+    </>
   );
 }

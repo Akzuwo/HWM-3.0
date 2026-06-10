@@ -8,7 +8,7 @@
   "author": "HWM",
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron .\"",
+    "dev": "concurrently -k \"vite --host 127.0.0.1 --port 5174 --strictPort\" \"wait-on http://127.0.0.1:5174 && electron .\"",
     "build": "vite build",
     "dist": "npm run build && electron-builder",
     "dist:win": "npm run build && electron-builder --win --x64"

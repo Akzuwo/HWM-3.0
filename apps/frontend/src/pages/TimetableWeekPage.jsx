@@ -1,4 +1,5 @@
-import { AppLayout } from '../components/AppLayout';
+import { Link } from 'react-router-dom';
+import { GlassSkeleton } from '../components/GlassSkeleton';
 import { usePageSetup } from '../hooks/usePageSetup';
 
 export function TimetableWeekPage() {
@@ -8,7 +9,7 @@ export function TimetableWeekPage() {
   });
 
   return (
-    <AppLayout>
+    <>
       <main className="page-container" id="main">
         <header className="page-header">
           <div className="page-title">
@@ -33,16 +34,16 @@ export function TimetableWeekPage() {
             <button className="hm-back-link" type="button" data-week-next="">
               Folgewoche
             </button>
-            <a className="hm-back-link" href="/tagesuebersicht.html">
+            <Link className="hm-back-link" to="/tagesuebersicht">
               Tagesansicht
-            </a>
+            </Link>
           </div>
         </header>
 
         <div id="weekOverview" className="overview-grid overview-grid--week">
-          Daten werden geladen...
+          <GlassSkeleton label="Wochenstundenplan wird geladen" rows={5} />
         </div>
       </main>
-    </AppLayout>
+    </>
   );
 }

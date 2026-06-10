@@ -809,6 +809,40 @@ def _ensure_int(value: Any, allow_none: bool = True) -> Optional[int]:
     return ivalue
 
 
+def _parse_optional_datetime(value: Any) -> Optional[datetime.datetime]:
+    if value in (None, ''):
+        return None
+    if isinstance(value, datetime.datetime):
+        return value
+    if isinstance(value, str):
+        raw = value.strip()
+        if not raw:
+            return None
+        try:
+            parsed = datetime.datetime.fromisoformat(raw.replace('Z', '+00:00'))
+        except ValueError:
+            raise ValueError('invalid_datetime')
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+        return parsed
+    raise ValueError('invalid_datetime')
+
+
+def _normalize_news_link(value: Any) -> Optional[str]:
+    raw = (str(value).strip() if value is not None else '')
+    if not raw:
+        return None
+    if len(raw) > 500:
+        raise ValueError('invalid_link_url')
+    if raw.startswith('/'):
+        if raw.startswith('//'):
+            raise ValueError('invalid_link_url')
+        return raw
+    if re.match(r'^https?://', raw, flags=re.IGNORECASE):
+        return raw
+    raise ValueError('invalid_link_url')
+
+
 DEFAULT_CLASS_SLUG = (os.getenv('DEFAULT_CLASS_SLUG', 'default') or 'default').strip().lower() or 'default'
 WEEKDAY_ORDER = [
     "Monday",
@@ -5151,6 +5185,243 @@ def admin_users_resource(user_id: int):
 @require_admin
 def secure_data():
     return jsonify(status='ok', data='Hier sind geheime Daten!')
+
+
+@app.route('/api/news', methods=['GET'])
+def public_news_collection():
+    try:
+        limit = int(request.args.get('limit', 2))
+    except (TypeError, ValueError):
+        limit = 2
+    limit = min(max(limit, 1), 10)
+
+    try:
+        conn = get_connection()
+    except Exception:
+        return jsonify(status='error', message='database_unavailable'), 503
+
+    with closing(conn):
+        cursor = conn.dict_cursor()
+        try:
+            cursor.execute(
+                """
+                SELECT id, title, summary, body, link_url, published_at, created_at, updated_at
+                FROM news_entries
+                WHERE is_published=1
+                ORDER BY COALESCE(published_at, created_at) DESC, id DESC
+                LIMIT ?
+                """,
+                (limit,),
+            )
+            rows = cursor.fetchall() or []
+        except sqlite3.Error:
+            return jsonify(status='error', message='database_unavailable'), 503
+        finally:
+            cursor.close()
+
+    return jsonify(status='ok', data=list(_serialize_rows(rows)))
+
+
+@app.route('/api/admin/news', methods=['GET', 'POST', 'OPTIONS'])
+@require_role('admin')
+def admin_news_collection():
+    if request.method == 'OPTIONS':
+        return _cors_preflight()
+
+    try:
+        conn = get_connection()
+    except Exception:
+        return jsonify(status='error', message='database_unavailable'), 503
+
+    with closing(conn):
+        if request.method == 'GET':
+            page, page_size = _parse_pagination()
+            offset = (page - 1) * page_size
+            cursor = conn.dict_cursor()
+            try:
+                cursor.execute("SELECT COUNT(*) AS total FROM news_entries")
+                total = int((cursor.fetchone() or {'total': 0}).get('total') or 0)
+                cursor.execute(
+                    """
+                    SELECT id, title, summary, body, link_url, is_published,
+                           published_at, created_at, updated_at
+                    FROM news_entries
+                    ORDER BY COALESCE(published_at, created_at) DESC, id DESC
+                    LIMIT ? OFFSET ?
+                    """,
+                    (page_size, offset),
+                )
+                rows = cursor.fetchall() or []
+            except sqlite3.Error:
+                return jsonify(status='error', message='database_unavailable'), 503
+            finally:
+                cursor.close()
+            return _pagination_response(rows, total, page, page_size)
+
+        data = request.json or {}
+        title = (data.get('title') or '').strip()
+        summary = (data.get('summary') or '').strip() or None
+        body = (data.get('body') or '').strip() or None
+        is_published = _parse_bool(data.get('is_published'), True)
+
+        if not title:
+            return jsonify(status='error', message='title_required'), 400
+        if len(title) > 160:
+            return jsonify(status='error', message='title_too_long'), 400
+        if summary and len(summary) > 500:
+            return jsonify(status='error', message='summary_too_long'), 400
+
+        try:
+            link_url = _normalize_news_link(data.get('link_url'))
+            published_at = _parse_optional_datetime(data.get('published_at'))
+        except ValueError as exc:
+            return jsonify(status='error', message=str(exc)), 400
+
+        now = datetime.datetime.utcnow()
+        if is_published and published_at is None:
+            published_at = now
+
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                """
+                INSERT INTO news_entries
+                    (title, summary, body, link_url, is_published, published_at, created_by, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (title, summary, body, link_url, int(is_published), published_at, session.get('user_id'), now, now),
+            )
+            news_id = cursor.lastrowid
+            _log_admin_action(
+                conn,
+                'create',
+                'news',
+                news_id,
+                {'title': title, 'is_published': bool(is_published), 'published_at': _serialize_value(published_at)},
+            )
+            conn.commit()
+        except sqlite3.Error:
+            conn.rollback()
+            return jsonify(status='error', message='database_unavailable'), 503
+        finally:
+            cursor.close()
+
+    return jsonify(status='ok', id=news_id)
+
+
+@app.route('/api/admin/news/<int:news_id>', methods=['GET', 'PUT', 'DELETE', 'OPTIONS'])
+@require_role('admin')
+def admin_news_resource(news_id: int):
+    if request.method == 'OPTIONS':
+        return _cors_preflight()
+
+    try:
+        conn = get_connection()
+    except Exception:
+        return jsonify(status='error', message='database_unavailable'), 503
+
+    with closing(conn):
+        cursor = conn.dict_cursor()
+        try:
+            if request.method == 'GET':
+                cursor.execute(
+                    """
+                    SELECT id, title, summary, body, link_url, is_published,
+                           published_at, created_at, updated_at
+                    FROM news_entries
+                    WHERE id=?
+                    LIMIT 1
+                    """,
+                    (news_id,),
+                )
+                row = cursor.fetchone()
+                if not row:
+                    return jsonify(status='error', message='news_not_found'), 404
+                return jsonify(status='ok', data=list(_serialize_rows([row]))[0])
+
+            if request.method == 'DELETE':
+                cursor.close()
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM news_entries WHERE id=?", (news_id,))
+                if cursor.rowcount == 0:
+                    return jsonify(status='error', message='news_not_found'), 404
+                _log_admin_action(conn, 'delete', 'news', news_id, {})
+                conn.commit()
+                return jsonify(status='ok')
+
+            data = request.json or {}
+            updates = []
+            values = []
+            details: Dict[str, Any] = {}
+
+            if 'title' in data:
+                title = (data.get('title') or '').strip()
+                if not title:
+                    return jsonify(status='error', message='title_required'), 400
+                if len(title) > 160:
+                    return jsonify(status='error', message='title_too_long'), 400
+                updates.append('title=?')
+                values.append(title)
+                details['title'] = title
+
+            if 'summary' in data:
+                summary = (data.get('summary') or '').strip() or None
+                if summary and len(summary) > 500:
+                    return jsonify(status='error', message='summary_too_long'), 400
+                updates.append('summary=?')
+                values.append(summary)
+                details['summary'] = summary
+
+            if 'body' in data:
+                body = (data.get('body') or '').strip() or None
+                updates.append('body=?')
+                values.append(body)
+
+            if 'link_url' in data:
+                try:
+                    link_url = _normalize_news_link(data.get('link_url'))
+                except ValueError as exc:
+                    return jsonify(status='error', message=str(exc)), 400
+                updates.append('link_url=?')
+                values.append(link_url)
+                details['link_url'] = link_url
+
+            if 'is_published' in data:
+                is_published = _parse_bool(data.get('is_published'), True)
+                updates.append('is_published=?')
+                values.append(int(is_published))
+                details['is_published'] = bool(is_published)
+
+            if 'published_at' in data:
+                try:
+                    published_at = _parse_optional_datetime(data.get('published_at'))
+                except ValueError as exc:
+                    return jsonify(status='error', message=str(exc)), 400
+                updates.append('published_at=?')
+                values.append(published_at)
+                details['published_at'] = _serialize_value(published_at)
+
+            if not updates:
+                return jsonify(status='error', message='no_changes'), 400
+
+            updates.append('updated_at=?')
+            values.append(datetime.datetime.utcnow())
+
+            cursor.close()
+            cursor = conn.cursor()
+            query = f"UPDATE news_entries SET {', '.join(updates)} WHERE id=?"
+            values.append(news_id)
+            cursor.execute(query, tuple(values))
+            if cursor.rowcount == 0:
+                return jsonify(status='error', message='news_not_found'), 404
+            _log_admin_action(conn, 'update', 'news', news_id, details)
+            conn.commit()
+            return jsonify(status='ok')
+        except sqlite3.Error:
+            conn.rollback()
+            return jsonify(status='error', message='database_unavailable'), 503
+        finally:
+            cursor.close()
 
 
 @app.route('/api/admin/classes', methods=['GET', 'POST', 'OPTIONS'])

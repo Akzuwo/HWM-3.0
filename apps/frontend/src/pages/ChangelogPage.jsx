@@ -1,4 +1,3 @@
-import { AppLayout } from '../components/AppLayout';
 import { usePageSetup } from '../hooks/usePageSetup';
 
 export function ChangelogPage() {
@@ -8,7 +7,7 @@ export function ChangelogPage() {
   });
 
   return (
-    <AppLayout>
+    <>
       <main className="changelog-main" id="main">
         <header className="changelog-header">
           <h1 data-i18n="changelog.title">Changelog</h1>
@@ -92,7 +91,7 @@ export function ChangelogPage() {
           </article>
         </section>
       </main>
-    </AppLayout>
+    </>
   );
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AppLayout } from '../components/AppLayout';
+import { GlassSkeleton } from '../components/GlassSkeleton';
 import { usePageSetup } from '../hooks/usePageSetup';
 import { fetchRuopigenDepartures } from '../services/departures';
 
@@ -68,6 +68,11 @@ export function DeparturesPage() {
   const [status, setStatus] = useState('loading');
   const [message, setMessage] = useState('');
   const [visibleLimit, setVisibleLimit] = useState(MAX_DEPARTURES);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window !== 'undefined') return window.innerWidth <= DESKTOP_BREAKPOINT;
+    return false;
+  });
+
   const inFlightRef = useRef(false);
   const abortRef = useRef(null);
   const departuresRef = useRef([]);
@@ -129,6 +134,19 @@ export function DeparturesPage() {
       window.clearInterval(intervalId);
       abortRef.current?.abort();
     };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const media = window.matchMedia(`(max-width: ${DESKTOP_BREAKPOINT}px)`);
+    const update = (e) => setIsMobile(e.matches);
+    if (media.addEventListener) {
+      media.addEventListener('change', update);
+      return () => media.removeEventListener('change', update);
+    } else {
+      media.addListener(update);
+      return () => media.removeListener(update);
+    }
   }, []);
 
   useEffect(() => {
@@ -216,7 +234,7 @@ export function DeparturesPage() {
   const isBusy = status === 'loading' || status === 'refreshing';
 
   return (
-    <AppLayout mainClassName="hm-react-main--departures">
+    <>
       <main className="departures-page" id="main" ref={pageRef}>
         <section className="departures-liveboard-panel" aria-live="polite" ref={panelRef}>
           <h1 className="departures-liveboard-panel__title">öV Liveboard</h1>
@@ -224,7 +242,7 @@ export function DeparturesPage() {
           {message || status === 'loading' || status === 'empty' ? (
             <div className="departures-feedback">
               {message ? <p className={status === 'error' ? 'departures-error' : 'departures-note'}>{message}</p> : null}
-              {status === 'loading' ? <p className="departures-loading">Abfahrtsdaten werden geladen...</p> : null}
+              {status === 'loading' ? <GlassSkeleton label="Abfahrtsdaten werden geladen" rows={5} compact /> : null}
               {status === 'empty' ? <p className="departures-empty">Für diese Haltestelle wurden keine Abfahrten gefunden.</p> : null}
             </div>
           ) : null}
@@ -232,14 +250,16 @@ export function DeparturesPage() {
           {visibleDepartures.length > 0 ? (
             <div className="departures-list-shell" ref={listShellRef}>
               <div className="departures-list" role="list" ref={listRef}>
-                <div className="departures-list__header" aria-hidden="true">
-                  <span>Linie</span>
-                  <span>Richtung</span>
-                  <span>Plan</span>
-                  <span>Effektiv</span>
-                  <span>Verspätung</span>
-                  <span>Status</span>
-                </div>
+                {!isMobile && (
+                  <div className="departures-list__header" aria-hidden="true">
+                    <span>Linie</span>
+                    <span>Richtung</span>
+                    <span>Plan</span>
+                    <span>Effektiv</span>
+                    <span>Verspätung</span>
+                    <span>Status</span>
+                  </div>
+                )}
 
                 {visibleDepartures.map((departure) => {
                   const statusMeta = getStatusMeta(departure);
@@ -249,6 +269,80 @@ export function DeparturesPage() {
                     : departure.delay_minutes > 0
                       ? `+${departure.delay_minutes} min`
                       : '0 min';
+
+                  if (isMobile) {
+                    return (
+                      <article 
+                        key={departure.id}
+                        role="listitem"
+                        className="flex flex-col p-3 mb-3 rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.01] hover:shadow-hm-soft relative group"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(255,255,255,0.85), rgba(240, 247, 255, 0.45))',
+                          boxShadow: '0 8px 24px rgba(111, 142, 208, 0.12), inset 0 1px 0 rgba(255,255,255,0.9)',
+                          border: '1px solid rgba(186, 208, 240, 0.6)',
+                        }}
+                      >
+                        <div className="flex justify-between items-start mb-2.5">
+                          <div className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-xs px-2 py-0.5 rounded shadow-sm">
+                                {departure.line_label || 'Linie'}
+                              </span>
+                              <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+                                {departure.operator || departure.category_label || 'ÖV'}
+                              </span>
+                            </div>
+                            <h3 className="text-slate-800 font-bold text-base leading-tight">
+                              {departure.destination || 'Unbekannte Richtung'}
+                            </h3>
+                            <div className="text-slate-500 text-xs mt-0.5 font-medium">
+                              {departure.platform ? `Steig ${departure.platform}` : 'Ohne Steigangabe'}
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-col items-end pl-2">
+                             <span className={`text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap shadow-sm border border-black/5 ${
+                               statusMeta.tone === 'success' ? 'bg-emerald-100 text-emerald-700' :
+                               statusMeta.tone === 'delay' ? 'bg-rose-100 text-rose-700' :
+                               statusMeta.tone === 'soon' ? 'bg-amber-100 text-amber-700' :
+                               'bg-slate-100 text-slate-600'
+                             }`}>
+                               {statusMeta.label}
+                             </span>
+                          </div>
+                        </div>
+
+                        <div className="w-full h-px bg-gradient-to-r from-transparent via-blue-200/60 to-transparent my-2"></div>
+
+                        <div className="flex items-center justify-between mt-1">
+                           <div className="flex items-center gap-3">
+                             <div className="flex flex-col">
+                               <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider mb-0.5">Geplant</span>
+                               <span className="text-slate-600 font-semibold text-sm">{formatClock(departure.planned_departure)}</span>
+                             </div>
+                             <div className="w-4 h-4 text-blue-300 flex items-center justify-center">
+                               <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="w-3 h-3">
+                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                               </svg>
+                             </div>
+                             <div className="flex flex-col">
+                               <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider mb-0.5">Effektiv</span>
+                               <span className={`font-bold text-sm ${departure.delay_minutes > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                 {effectiveDeparture}
+                               </span>
+                             </div>
+                           </div>
+                           
+                           <div className="flex flex-col items-end text-right">
+                             <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider mb-0.5">Verspätung</span>
+                             <span className={`text-xs font-bold ${departure.delay_minutes > 0 ? 'text-rose-600' : 'text-slate-500'}`}>
+                               {delayLabel}
+                             </span>
+                           </div>
+                        </div>
+                      </article>
+                    );
+                  }
 
                   return (
                     <article className="departure-row" key={departure.id} role="listitem">
@@ -299,6 +393,6 @@ export function DeparturesPage() {
           </div>
         </section>
       </main>
-    </AppLayout>
+    </>
   );
 }

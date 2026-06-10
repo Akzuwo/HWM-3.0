@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { AppLayout } from '../components/AppLayout';
 import { AdminDashboardPage } from '../pages/AdminDashboardPage';
 import { AboutPage } from '../pages/AboutPage';
 import { CalendarPage } from '../pages/CalendarPage';
@@ -131,16 +132,18 @@ export function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {ROUTES.flatMap((routeConfig) =>
-          routeConfig.paths.map((path) => (
-            <Route
-              key={path}
-              path={path}
-              element={<PageRoute title={routeConfig.title} element={routeConfig.element} />}
-            />
-          ))
-        )}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route element={<AppLayout />}>
+          {ROUTES.flatMap((routeConfig) =>
+            routeConfig.paths.map((path) => (
+              <Route
+                key={path}
+                path={path}
+                element={<PageRoute title={routeConfig.title} element={routeConfig.element} />}
+              />
+            ))
+          )}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );

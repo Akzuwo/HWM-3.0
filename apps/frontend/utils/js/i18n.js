@@ -750,16 +750,17 @@
       <h2>Welche Daten wir verarbeiten</h2>
       <article class="legal-card">
         <p>Wir verarbeiten ausschließlich die Informationen, die du aktiv im Homework Manager speicherst. Dazu gehören unter anderem Aufgaben, Fächer, Noten und Termine. Zusätzlich werden technische Metadaten wie das Datum der letzten Anmeldung gespeichert, um dein Konto zu schützen.</p>
-        <p>Wir setzen keine Tracking- oder Analyse-Dienste von Drittanbietern ein. Deine Daten verbleiben auf unseren Systemen und werden nicht zu Werbezwecken weitergegeben.</p>
+        <p>Wir setzen keine Marketing-Dienste ein. Je nach Cloudflare-Konfiguration können Sicherheits- und Performance-Daten verarbeitet werden, um den Dienst zu schützen und die Verfügbarkeit zu messen. Deine Daten werden nicht zu Werbezwecken weitergegeben.</p>
       </article>
     </section>
 
     <section class="legal-section">
       <h2>Cookies &amp; Web Storage</h2>
       <article class="legal-card">
-        <p>Wir verwenden ein technisch erforderliches Session-Cookie, um dich nach der Anmeldung zu authentifizieren. Das Session-Cookie wird nur während der laufenden Sitzung gespeichert und verfällt automatisch, sobald du dich abmeldest oder den Browser schließt.</p>
+        <p>Wir verwenden ein technisch erforderliches Session-Cookie, um dich nach der Anmeldung zu authentifizieren und API-Anfragen deinem Konto zuzuordnen. Das Session-Cookie wird nur während der laufenden Sitzung gespeichert und verfällt automatisch, sobald du dich abmeldest oder den Browser schließt.</p>
+        <p>Cloudflare kann technisch notwendige Sicherheitscookies setzen, beispielsweise um automatisierte Zugriffe zu erkennen, Challenges zu speichern oder die Plattform vor Missbrauch zu schützen. Optionale Statistik- oder Performance-Messungen aktivieren wir nur nach deiner Einwilligung.</p>
         <p>Zusätzlich nutzen wir <code>sessionStorage</code>, um Zwischenspeicher wie Formularzustände oder deine E-Mail-Adresse für die Dauer der Sitzung bereitzuhalten. Diese Daten bleiben lokal in deinem Browser und werden beim Schließen des Tabs gelöscht.</p>
-        <p>Wir setzen keine Tracking- oder Analyse-Cookies ein.</p>
+        <p>Wir setzen keine Marketing-Cookies ein.</p>
       </article>
     </section>
 
@@ -1613,16 +1614,17 @@
       <h2>Data We Process</h2>
       <article class="legal-card">
         <p>We only process the information you actively store in Homework Manager, such as assignments, subjects, grades, and events. Technical metadata like the date of your last sign-in is retained to keep your account secure.</p>
-        <p>No third-party tracking or analytics services are used. Your data stays on our systems and is never shared for advertising purposes.</p>
+        <p>We do not use marketing services. Depending on the Cloudflare configuration, security and performance data may be processed to protect the service and measure availability. Your data is never shared for advertising purposes.</p>
       </article>
     </section>
 
     <section class="legal-section">
       <h2>Cookies &amp; Web Storage</h2>
       <article class="legal-card">
-        <p>We use a technically required session cookie to authenticate you after sign-in. The session cookie is stored only for the active session and expires automatically when you sign out or close your browser.</p>
+        <p>We use a technically required session cookie to authenticate you after sign-in and associate API requests with your account. The session cookie is stored only for the active session and expires automatically when you sign out or close your browser.</p>
+        <p>Cloudflare may set technically required security cookies, for example to detect automated access, store challenge clearance, or protect the platform from abuse. Optional statistics or performance measurement is only activated after your consent.</p>
         <p>We also use <code>sessionStorage</code> to keep temporary information such as form states or your email address during the session. This data stays locally in your browser and is cleared when you close the tab.</p>
-        <p>We do not use tracking or analytics cookies.</p>
+        <p>We do not use marketing cookies.</p>
       </article>
     </section>
 
@@ -2475,16 +2477,17 @@
       <h2>Dati che trattiamo</h2>
       <article class="legal-card">
         <p>Trattiamo esclusivamente le informazioni che salvi attivamente in Homework Manager, come compiti, materie, voti ed eventi. Inoltre conserviamo metadati tecnici, ad esempio la data dell'ultimo accesso, per proteggere il tuo account.</p>
-        <p>Non utilizziamo servizi di tracciamento o analisi di terzi. I tuoi dati rimangono sui nostri sistemi e non vengono ceduti a fini pubblicitari.</p>
+        <p>Non utilizziamo servizi di marketing. A seconda della configurazione di Cloudflare, possono essere trattati dati di sicurezza e performance per proteggere il servizio e misurarne la disponibilità. I tuoi dati non vengono ceduti a fini pubblicitari.</p>
       </article>
     </section>
 
     <section class="legal-section">
       <h2>Cookie &amp; Web Storage</h2>
       <article class="legal-card">
-        <p>Utilizziamo un cookie di sessione tecnicamente necessario per autenticarti dopo l'accesso. Il cookie di sessione viene conservato solo per la durata della sessione attiva e scade automaticamente quando effettui il logout o chiudi il browser.</p>
+        <p>Utilizziamo un cookie di sessione tecnicamente necessario per autenticarti dopo l'accesso e associare le richieste API al tuo account. Il cookie di sessione viene conservato solo per la durata della sessione attiva e scade automaticamente quando effettui il logout o chiudi il browser.</p>
+        <p>Cloudflare può impostare cookie di sicurezza tecnicamente necessari, ad esempio per riconoscere accessi automatizzati, memorizzare il superamento di challenge o proteggere la piattaforma da abusi. Le statistiche opzionali o le misurazioni delle performance vengono attivate solo dopo il tuo consenso.</p>
         <p>Inoltre utilizziamo <code>sessionStorage</code> per memorizzare temporaneamente informazioni come lo stato dei moduli o il tuo indirizzo e-mail durante la sessione. Questi dati restano localmente nel tuo browser e vengono cancellati alla chiusura della scheda.</p>
-        <p>Non utilizziamo cookie di tracciamento o di analisi.</p>
+        <p>Non utilizziamo cookie di marketing.</p>
       </article>
     </section>
 
@@ -3336,16 +3339,17 @@
       <h2>Données que nous traitons</h2>
       <article class="legal-card">
         <p>Nous traitons uniquement les informations que vous enregistrez activement dans Homework Manager, comme les devoirs, matières, notes et événements. Des métadonnées techniques, par exemple la date de votre dernière connexion, sont conservées afin de sécuriser votre compte.</p>
-        <p>Aucun service tiers de suivi ou d'analyse n'est utilisé. Vos données restent sur nos systèmes et ne sont jamais transmises à des fins publicitaires.</p>
+        <p>Nous n'utilisons aucun service marketing. Selon la configuration de Cloudflare, des données de sécurité et de performance peuvent être traitées afin de protéger le service et d'en mesurer la disponibilité. Vos données ne sont jamais transmises à des fins publicitaires.</p>
       </article>
     </section>
 
     <section class="legal-section">
       <h2>Cookies &amp; Web Storage</h2>
       <article class="legal-card">
-        <p>Nous utilisons un cookie de session techniquement nécessaire pour vous authentifier après la connexion. Le cookie de session n'est conservé que pendant la session active et expire automatiquement lorsque vous vous déconnectez ou fermez le navigateur.</p>
+        <p>Nous utilisons un cookie de session techniquement nécessaire pour vous authentifier après la connexion et associer les requêtes API à votre compte. Le cookie de session n'est conservé que pendant la session active et expire automatiquement lorsque vous vous déconnectez ou fermez le navigateur.</p>
+        <p>Cloudflare peut définir des cookies de sécurité techniquement nécessaires, par exemple pour détecter les accès automatisés, conserver une validation de challenge ou protéger la plateforme contre les abus. Les statistiques optionnelles ou les mesures de performance ne sont activées qu'après votre consentement.</p>
         <p>Nous utilisons également <code>sessionStorage</code> pour conserver temporairement des informations telles que l'état des formulaires ou votre adresse e-mail pendant la session. Ces données restent localement dans votre navigateur et sont effacées à la fermeture de l'onglet.</p>
-        <p>Nous n'utilisons aucun cookie de suivi ou d'analyse.</p>
+        <p>Nous n'utilisons aucun cookie marketing.</p>
       </article>
     </section>
 

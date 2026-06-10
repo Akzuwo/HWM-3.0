@@ -1,4 +1,4 @@
-import { AppLayout } from '../components/AppLayout';
+import { GlassSkeleton } from '../components/GlassSkeleton';
 import { usePageSetup } from '../hooks/usePageSetup';
 import { SUBJECT_OPTIONS } from './shared';
 
@@ -13,7 +13,7 @@ export function CalendarPage() {
   });
 
   return (
-    <AppLayout footer={false}>
+    <>
       <main className="calendar-page" id="main">
         <section className="calendar-intro">
           <div className="calendar-intro__heading">
@@ -205,8 +205,8 @@ export function CalendarPage() {
             </aside>
 
             <div className="calendar-board">
-              <div id="calendar" data-state="loading" role="status" aria-live="polite" aria-busy="true" data-i18n="calendar.status.loading">
-                Loading calendar ...
+              <div id="calendar" data-state="loading" role="status" aria-live="polite" aria-busy="true">
+                <GlassSkeleton label="Kalender wird geladen" rows={5} />
               </div>
               <div className="calendar-agenda-view" data-calendar-agenda=""></div>
               <div className="calendar-month-mobile" data-calendar-month=""></div>
@@ -528,7 +528,7 @@ export function CalendarPage() {
       </div>
 
       <div id="calendar-toast-container" className="calendar-toast-container" aria-live="polite" aria-atomic="true"></div>
-    </AppLayout>
+    </>
   );
 }
 

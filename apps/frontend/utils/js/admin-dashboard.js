@@ -10,11 +10,13 @@ const TRANSLATIONS = {
     nav: {
       users: 'Nutzer',
       classes: 'Klassen',
+      news: 'News',
       schedules: 'Stundenpläne',
     },
     create: {
       users: 'Neuen Nutzer anlegen',
       classes: 'Neue Klasse anlegen',
+      news: 'News-Eintrag anlegen',
       schedules: 'Stundenplan importieren',
       examImport: 'Prüfungen importieren',
     },
@@ -39,6 +41,10 @@ const TRANSLATIONS = {
       updatedAt: 'Aktualisiert',
       createdAt: 'Erstellt',
       classTitle: 'Klassenname',
+      newsTitle: 'Titel',
+      newsSummary: 'Kurztext',
+      linkUrl: 'Link',
+      publishedAt: 'Veröffentlicht am',
       source: 'Quelle',
       importHash: 'Import-Hash',
       importedAt: 'Importiert am',
@@ -53,6 +59,11 @@ const TRANSLATIONS = {
       slug: 'Kurzname',
       title: 'Titel',
       description: 'Beschreibung',
+      summary: 'Kurztext',
+      body: 'Inhalt',
+      linkUrl: 'Link-URL',
+      isPublished: 'Veröffentlicht',
+      publishedAt: 'Veröffentlicht am',
       source: 'Quelle',
       importHash: 'Import-Hash',
       importedAt: 'Importiert am',
@@ -110,11 +121,13 @@ const TRANSLATIONS = {
     nav: {
       users: 'Users',
       classes: 'Classes',
+      news: 'News',
       schedules: 'Schedules',
     },
     create: {
       users: 'Create user',
       classes: 'Create class',
+      news: 'Create news entry',
       schedules: 'Import schedule',
       examImport: 'Import exams',
     },
@@ -139,6 +152,10 @@ const TRANSLATIONS = {
       updatedAt: 'Updated',
       createdAt: 'Created',
       classTitle: 'Class name',
+      newsTitle: 'Title',
+      newsSummary: 'Summary',
+      linkUrl: 'Link',
+      publishedAt: 'Published at',
       source: 'Source',
       importHash: 'Import hash',
       importedAt: 'Imported at',
@@ -153,6 +170,11 @@ const TRANSLATIONS = {
       slug: 'Slug',
       title: 'Title',
       description: 'Description',
+      summary: 'Summary',
+      body: 'Content',
+      linkUrl: 'Link URL',
+      isPublished: 'Published',
+      publishedAt: 'Published at',
       source: 'Source',
       importHash: 'Import hash',
       importedAt: 'Imported at',
@@ -210,11 +232,13 @@ const TRANSLATIONS = {
     nav: {
       users: 'Utilisateurs',
       classes: 'Classes',
+      news: 'News',
       schedules: 'Horaires',
     },
     create: {
       users: 'Créer un utilisateur',
       classes: 'Créer une classe',
+      news: 'Créer une news',
       schedules: 'Importer un horaire',
       examImport: 'Importer des examens',
     },
@@ -239,6 +263,10 @@ const TRANSLATIONS = {
       updatedAt: 'Mis à jour',
       createdAt: 'Créé',
       classTitle: 'Nom de la classe',
+      newsTitle: 'Titre',
+      newsSummary: 'Résumé',
+      linkUrl: 'Lien',
+      publishedAt: 'Publié le',
       source: 'Source',
       importHash: 'Hash d’import',
       importedAt: 'Importé le',
@@ -253,6 +281,11 @@ const TRANSLATIONS = {
       slug: 'Identifiant',
       title: 'Titre',
       description: 'Description',
+      summary: 'Résumé',
+      body: 'Contenu',
+      linkUrl: 'URL du lien',
+      isPublished: 'Publié',
+      publishedAt: 'Publié le',
       source: 'Source',
       importHash: 'Hash d’import',
       importedAt: 'Importé le',
@@ -310,11 +343,13 @@ const TRANSLATIONS = {
     nav: {
       users: 'Utenti',
       classes: 'Classi',
+      news: 'News',
       schedules: 'Orari',
     },
     create: {
       users: 'Crea utente',
       classes: 'Crea classe',
+      news: 'Crea news',
       schedules: 'Importa orario',
       examImport: 'Importa verifiche',
     },
@@ -339,6 +374,10 @@ const TRANSLATIONS = {
       updatedAt: 'Aggiornato',
       createdAt: 'Creato',
       classTitle: 'Nome classe',
+      newsTitle: 'Titolo',
+      newsSummary: 'Riassunto',
+      linkUrl: 'Link',
+      publishedAt: 'Pubblicato il',
       source: 'Fonte',
       importHash: 'Hash importazione',
       importedAt: 'Importato il',
@@ -353,6 +392,11 @@ const TRANSLATIONS = {
       slug: 'Slug',
       title: 'Titolo',
       description: 'Descrizione',
+      summary: 'Riassunto',
+      body: 'Contenuto',
+      linkUrl: 'URL link',
+      isPublished: 'Pubblicato',
+      publishedAt: 'Pubblicato il',
       source: 'Fonte',
       importHash: 'Hash importazione',
       importedAt: 'Importato il',
@@ -659,6 +703,23 @@ function sanitizeSchedulePayload(values) {
   return payload;
 }
 
+function sanitizeNewsPayload(values) {
+  const payload = { ...values };
+  if (!payload.published_at) {
+    payload.published_at = null;
+  }
+  if (!payload.link_url) {
+    payload.link_url = null;
+  }
+  if (!payload.summary) {
+    payload.summary = null;
+  }
+  if (!payload.body) {
+    payload.body = null;
+  }
+  return payload;
+}
+
 function buildDashboard(root) {
   const t = getTranslations();
   const locale = localeForDate();
@@ -868,6 +929,37 @@ function buildDashboard(root) {
       },
       sanitize: (values) => values,
     },
+    news: {
+      key: 'news',
+      label: t.nav.news,
+      columns: [
+        { key: 'title', label: t.table.newsTitle },
+        { key: 'summary', label: t.table.newsSummary },
+        { key: 'link_url', label: t.table.linkUrl },
+        { key: 'is_published', label: t.table.status, render: (row) => (row.is_published ? t.status.active : t.status.inactive) },
+        { key: 'published_at', label: t.table.publishedAt, render: (row) => formatDate(row.published_at, locale) },
+        { key: 'updated_at', label: t.table.updatedAt, render: (row) => formatDate(row.updated_at, locale) },
+      ],
+      form: {
+        create: [
+          { name: 'title', label: t.fields.title, required: true },
+          { name: 'summary', type: 'textarea', rows: 3, label: t.fields.summary },
+          { name: 'body', type: 'textarea', rows: 6, label: t.fields.body },
+          { name: 'link_url', label: t.fields.linkUrl, placeholder: '/changelog oder https://...' },
+          { name: 'published_at', type: 'datetime-local', label: t.fields.publishedAt },
+          { name: 'is_published', type: 'checkbox', label: t.fields.isPublished, defaultValue: true },
+        ],
+        edit: [
+          { name: 'title', label: t.fields.title, required: true },
+          { name: 'summary', type: 'textarea', rows: 3, label: t.fields.summary },
+          { name: 'body', type: 'textarea', rows: 6, label: t.fields.body },
+          { name: 'link_url', label: t.fields.linkUrl, placeholder: '/changelog oder https://...' },
+          { name: 'published_at', type: 'datetime-local', label: t.fields.publishedAt },
+          { name: 'is_published', type: 'checkbox', label: t.fields.isPublished },
+        ],
+      },
+      sanitize: sanitizeNewsPayload,
+    },
     schedules: {
       key: 'schedules',
       label: t.nav.schedules,
@@ -901,6 +993,7 @@ function buildDashboard(root) {
   const sections = [
     { key: 'users', label: t.nav.users, type: 'resource' },
     { key: 'classes', label: t.nav.classes, type: 'resource' },
+    { key: 'news', label: t.nav.news, type: 'resource' },
     { key: 'schedules', label: t.nav.schedules, type: 'resource' },
     { key: 'logs', label: t.logs.title, type: 'logs' },
   ];

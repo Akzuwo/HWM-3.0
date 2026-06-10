@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { openCookieSettings } from './CookieConsentBanner';
 
 export function Footer() {
   return (
@@ -20,6 +21,9 @@ export function Footer() {
           <Link className="hm-footer__link" to="/datenschutz" data-i18n="common.footer.privacy">
             Datenschutz
           </Link>
+          <button className="hm-footer__link hm-footer__button" type="button" onClick={openCookieSettings}>
+            Cookie-Einstellungen
+          </button>
           <Link className="hm-footer__link" to="/changelog" data-i18n="common.footer.changelog">
             Changelog
           </Link>

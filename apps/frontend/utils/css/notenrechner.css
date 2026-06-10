@@ -28,6 +28,24 @@
   --control-height: 52px;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.4);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(148, 163, 184, 0.6);
+}
+
 main.grade-calculator {
   margin: clamp(32px, 9vh, 96px) auto var(--space-lg);
   max-width: clamp(720px, 70vw, 980px);
