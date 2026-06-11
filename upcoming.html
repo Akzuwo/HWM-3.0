@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="upcoming.pageTitle">Upcoming Events</title>
+  <link rel="icon" type="image/png" href="media/logo.png">
+  <link rel="stylesheet" href="utils/css/style.css">
+  <link rel="stylesheet" href="utils/css/upcoming.css">
+  <link rel="stylesheet" href="assets/page-transitions.css" />
+</head>
+<body class="upcoming-page">
+  <div id="pageContent">
+    <main class="upcoming" id="main">
+    <header class="upcoming__header">
+      <div class="upcoming__heading">
+        <h1 class="upcoming__title" data-i18n="upcoming.title">🔔 Upcoming Events</h1>
+        <p class="upcoming__lead" data-i18n="upcoming.lead">Stay on top of upcoming school events and plan ahead with ease.</p>
+      </div>
+      <div class="calendar-class-selector class-select" data-class-selector hidden>
+        <label for="upcoming-class-select">Class</label>
+        <select id="upcoming-class-select" data-class-select>
+          <option value="" disabled selected>Select class</option>
+        </select>
+      </div>
+    </header>
+    <p class="upcoming__status" data-i18n="upcoming.notice">Dieses Feature wird aktuell umgebaut.</p>
+
+    <section
+      class="upcoming__list"
+      id="upcoming-list"
+      role="list"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <p class="upcoming__status upcoming__status--loading" data-i18n="upcoming.loading">Loading data…</p>
+    </section>
+
+    <div class="upcoming__actions">
+      <button
+        type="button"
+        class="upcoming__button"
+        id="back-button"
+        aria-label="Back to the home page"
+        data-i18n-attr="aria-label:upcoming.backLabel"
+      >
+        <span data-i18n="upcoming.back">◀️ Back to overview</span>
+      </button>
+    </div>
+    </main>
+  </div>
+
+  <script type="module" src="utils/js/header.js"></script>
+  <script src="assets/page-transitions.js" defer></script>
+  <script src="utils/js/i18n.js" defer></script>
+  <script src="utils/js/i18n-anim.js" defer></script>
+  <script src="utils/js/auth.js" defer></script>
+  <script src="utils/js/calendar-permissions.js" defer></script>
+  <script src="utils/js/class-selector.js" defer></script>
+  <script src="utils/js/upcoming.js" defer></script>
+</body>
+</html>

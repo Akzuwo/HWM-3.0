@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="gradeCalculator.pageTitle">Grade Calculator</title>
+  <link rel="icon" type="image/png" href="media/logo.png">
+  <link rel="stylesheet" href="utils/css/style.css">
+  <link rel="stylesheet" href="utils/css/notenrechner.css">
+  <link rel="stylesheet" href="assets/page-transitions.css" />
+</head>
+<body>
+  <div id="pageContent">
+    <main class="grade-calculator" id="main" data-grade-calculator>
+      <header class="grade-calculator__header">
+      <h1 class="grade-calculator__title">
+        <span class="grade-calculator__title-icon" aria-hidden="true">📊</span>
+        <span data-i18n="gradeCalculator.title">Grade Calculator</span>
+      </h1>
+    </header>
+
+    <section class="grade-calculator__section" aria-labelledby="add-grade-heading">
+      <h2 id="add-grade-heading" class="grade-calculator__section-title" data-i18n="gradeCalculator.add.title">Add grade</h2>
+      <form class="grade-calculator__form grade-calculator__form--inline" id="addForm" novalidate>
+        <div class="grade-calculator__field">
+          <label class="grade-calculator__label" for="note" data-i18n="gradeCalculator.add.gradeLabel">Grade</label>
+          <input
+            id="note"
+            class="grade-calculator__input"
+            type="number"
+            step="0.01"
+            min="1"
+            max="6"
+            placeholder="e.g. 5.5"
+            data-i18n-attr="placeholder:gradeCalculator.add.gradePlaceholder"
+            aria-describedby="gradeError"
+            inputmode="decimal"
+          >
+          <p class="grade-calculator__error" id="gradeError" role="status" aria-live="polite"></p>
+        </div>
+        <div class="grade-calculator__field">
+          <label class="grade-calculator__label" for="gewichtung" data-i18n="gradeCalculator.add.weightLabel">Weight</label>
+          <input
+            id="gewichtung"
+            class="grade-calculator__input"
+            type="number"
+            step="0.01"
+            min="0.01"
+            placeholder="e.g. 1"
+            data-i18n-attr="placeholder:gradeCalculator.add.weightPlaceholder"
+            aria-describedby="weightError"
+            inputmode="decimal"
+          >
+          <p class="grade-calculator__error" id="weightError" role="status" aria-live="polite"></p>
+        </div>
+        <div class="grade-calculator__action">
+          <button type="submit" id="add" class="grade-calculator__button grade-calculator__button--primary" disabled aria-disabled="true">
+            <span data-i18n="gradeCalculator.add.addButton">Add</span>
+            <span aria-hidden="true">＋</span>
+          </button>
+        </div>
+      </form>
+
+      <div class="grade-calculator__table-wrapper">
+        <table id="notenTabelle" class="grade-calculator__table">
+          <thead>
+            <tr>
+              <th scope="col" data-i18n="gradeCalculator.table.number">No.</th>
+              <th scope="col" data-i18n="gradeCalculator.table.grade">Grade</th>
+              <th scope="col" data-i18n="gradeCalculator.table.weight">Weight</th>
+              <th scope="col" class="visually-hidden" data-i18n="gradeCalculator.table.actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="grade-calculator__summary" aria-live="polite">
+        <div class="grade-calculator__summary-row" id="schnitt">
+          <span class="grade-calculator__summary-label" data-i18n="gradeCalculator.summary.average">Average</span>
+          <span class="grade-calculator__summary-value" id="averageValue">–</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="grade-calculator__section" aria-labelledby="target-heading">
+      <h2 id="target-heading" class="grade-calculator__section-title" data-i18n="gradeCalculator.target.title">Target average</h2>
+      <form class="grade-calculator__form grade-calculator__form--inline" id="targetForm" novalidate>
+        <div class="grade-calculator__field">
+          <label class="grade-calculator__label" for="ziel" data-i18n="gradeCalculator.target.targetLabel">Target average</label>
+          <input
+            id="ziel"
+            class="grade-calculator__input"
+            type="number"
+            step="0.01"
+            min="1"
+            max="6"
+            placeholder="e.g. 5"
+            data-i18n-attr="placeholder:gradeCalculator.target.targetPlaceholder"
+            aria-describedby="targetError"
+            inputmode="decimal"
+          >
+          <p class="grade-calculator__error" id="targetError" role="status" aria-live="polite"></p>
+        </div>
+        <div class="grade-calculator__field">
+          <label class="grade-calculator__label" for="zusaetzlich" data-i18n="gradeCalculator.target.nextWeightLabel">Weight of next grade</label>
+          <input
+            id="zusaetzlich"
+            class="grade-calculator__input"
+            type="number"
+            step="0.01"
+            min="0.01"
+            placeholder="e.g. 1"
+            data-i18n-attr="placeholder:gradeCalculator.target.nextWeightPlaceholder"
+            aria-describedby="nextWeightError"
+            inputmode="decimal"
+          >
+          <p class="grade-calculator__error" id="nextWeightError" role="status" aria-live="polite"></p>
+        </div>
+        <div class="grade-calculator__action">
+          <button type="submit" id="berechnen" class="grade-calculator__button grade-calculator__button--primary" disabled aria-disabled="true">
+            <span data-i18n="gradeCalculator.target.calculateButton">Calculate</span>
+            <span aria-hidden="true">=</span>
+          </button>
+        </div>
+      </form>
+
+      <div class="grade-calculator__footer" aria-live="polite">
+        <div class="grade-calculator__required" id="zielNote" data-state="idle" data-i18n="gradeCalculator.target.required">Required grade: –</div>
+      </div>
+    </section>
+
+    <div class="grade-calculator__back">
+      <a class="grade-calculator__button grade-calculator__button--secondary" href="index.html">
+        <span aria-hidden="true">◀️</span>
+        <span data-i18n="gradeCalculator.back">Back</span>
+      </a>
+    </div>
+
+    </main>
+  </div>
+  <script type="module" src="utils/js/header.js"></script>
+  <script src="assets/page-transitions.js" defer></script>
+  <script src="utils/js/i18n.js" defer></script>
+  <script src="utils/js/i18n-anim.js" defer></script>
+  <script src="utils/js/auth.js" defer></script>
+  <script src="utils/js/overlay.js" defer></script>
+  <script src="utils/js/toast.js" defer></script>
+  <script src="utils/js/footer.js" defer></script>
+  <script src="utils/js/notenrechner.js" defer></script>
+
+</body>
+<!-- Mirrored from homework-manager.akzuwo.ch/notenrechner by HTTrack Website Copier/3.x [XR&CO'2014], Fri, 22 Aug 2025 06:36:32 GMT -->
+</html>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="auth.pageTitle">Login - Homework Manager</title>
+  <link rel="icon" type="image/png" href="media/logo.png">
+  <link rel="stylesheet" href="utils/css/style.css">
+  <link rel="stylesheet" href="assets/page-transitions.css" />
+</head>
+<body>
+  <div id="pageContent">
+    <div class="login-container">
+    <header class="login-header">
+      <img src="media/logo.png" alt="Logo" class="login-logo" data-i18n-attr="alt:auth.logoAlt">
+      <div class="login-heading">
+        <h2 class="login-title" data-auth-title data-i18n="auth.title">🔒 Login</h2>
+        <span class="login-badge" data-auth-register-only data-auth-display="inline-flex" aria-hidden="true" hidden data-i18n="auth.newBadge">NEW</span>
+      </div>
+      <p class="login-description" data-auth-description hidden data-i18n="auth.registerSubtitle">Sign up with your school email address.</p>
+      <p class="login-status" data-auth-status data-i18n="auth.authStatusGuest">Not signed in</p>
+    </header>
+    <form class="login-form" data-auth-form novalidate>
+      <div class="login-banner" data-auth-verification hidden>
+        <strong data-i18n="auth.verificationRequired">Email verification required</strong>
+        <p data-i18n="auth.verificationRequiredBody">
+          Please confirm your email address via the link in your inbox. Delivery can take a few minutes. You can request a new email here.
+        </p>
+        <button type="button" class="login-link" data-auth-resend data-i18n="auth.verificationResendLink">Resend verification email</button>
+      </div>
+      <div class="form-group">
+        <label for="login-email" data-i18n="auth.emailLabel">Email address</label>
+        <input type="email" id="login-email" class="form-control" placeholder="name@example.com" autocomplete="email" data-auth-email required data-i18n-attr="placeholder:auth.emailPlaceholder">
+      </div>
+      <div class="form-group">
+        <label for="login-password" data-i18n="auth.passwordLabel">Password</label>
+        <div class="password-field">
+          <input type="password" id="login-password" class="form-control" placeholder="Password" autocomplete="current-password" data-auth-password data-i18n-attr="placeholder:auth.passwordPlaceholder">
+          <button type="button" class="toggle-password" data-auth-toggle aria-label="Show password" data-i18n-attr="aria-label:auth.show">
+            <span class="eye-icon" aria-hidden="true"></span>
+          </button>
+        </div>
+        <div class="login-feedback" data-auth-feedback role="alert" aria-live="polite" hidden></div>
+      </div>
+      <div class="form-group" data-auth-register-only data-auth-display="flex">
+        <label for="login-password-confirm" data-i18n="auth.registerPasswordConfirmLabel">Confirm password</label>
+        <input type="password" id="login-password-confirm" class="form-control" placeholder="Password" autocomplete="new-password" data-auth-password-confirm data-i18n-attr="placeholder:auth.passwordPlaceholder">
+      </div>
+      <div class="form-group form-group--optional" data-auth-register-only data-auth-display="flex">
+        <label for="login-class" data-i18n="auth.registerClassLabel">Class (optional)</label>
+        <input type="text" id="login-class" class="form-control" placeholder="e.g. L23a / Teachers: leave this blank" autocomplete="organization" data-auth-class data-i18n-attr="placeholder:auth.registerClassPlaceholder">
+      </div>
+      <div class="login-links">
+        <button type="button" class="login-link" data-auth-forgot data-auth-login-only data-i18n="auth.forgotPassword">Forgot password?</button>
+        <button type="button" class="login-link" data-auth-switch="register" data-i18n="auth.switchToRegister">New here? Create an account</button>
+        <button type="button" class="login-link" data-auth-switch="login" hidden data-i18n="auth.switchToLogin">Already registered? Log in</button>
+      </div>
+      <div class="login-actions">
+        <button type="submit" class="login-button" data-auth-submit data-i18n="auth.submit">Log in</button>
+        <button type="button" class="guest-button" data-auth-guest data-i18n="auth.guestButton">Continue as guest</button>
+        <p class="guest-info" data-i18n="auth.guestInfo">Continue without an account</p>
+      </div>
+    </form>
+    </div>
+  </div>
+
+  <script type="module" src="utils/js/header.js"></script>
+  <script src="assets/page-transitions.js" defer></script>
+  <script src="utils/js/i18n.js" defer></script>
+  <script src="utils/js/i18n-anim.js" defer></script>
+  <script src="utils/js/overlay.js" defer></script>
+  <script src="utils/js/toast.js" defer></script>
+  <script src="utils/js/footer.js" defer></script>
+  <script src="utils/js/auth.js" defer></script>
+</body>
+</html>

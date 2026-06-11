@@ -1,0 +1,93 @@
+/* Dedicated styles and animations for privacy (Datenschutz) pages */
+
+body.legal-page {
+  opacity: 0;
+  transform: translateY(1.5rem);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+  background: radial-gradient(circle at top left, rgba(91, 141, 239, 0.18), transparent 55%),
+    radial-gradient(circle at bottom right, rgba(30, 64, 175, 0.16), transparent 45%),
+    #0b0f1a;
+}
+
+body.legal-page.legal-loaded {
+  opacity: 1;
+  transform: none;
+}
+
+.legal-header,
+.legal-section {
+  position: relative;
+  opacity: 0;
+  transform: translateY(2.5rem);
+  transition: opacity 0.75s ease, transform 0.75s ease;
+  transition-delay: var(--section-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+.legal-header::after,
+.legal-section::after {
+  content: '';
+  position: absolute;
+  inset: auto 1.5rem -1.5rem;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(148, 163, 184, 0.28), rgba(15, 23, 42, 0));
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.legal-header.is-visible,
+.legal-section.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+.legal-header.is-visible::after,
+.legal-section.is-visible::after {
+  opacity: 1;
+}
+
+.legal-card {
+  box-shadow: 0 22px 48px -28px rgba(8, 12, 22, 0.65);
+  backdrop-filter: blur(18px);
+  background: linear-gradient(160deg, rgba(13, 18, 30, 0.86), rgba(16, 24, 38, 0.78));
+  border: 1px solid rgba(94, 123, 190, 0.22);
+  transition: transform 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease;
+}
+
+.legal-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 26px 58px -30px rgba(11, 17, 29, 0.7);
+  border-color: rgba(125, 162, 240, 0.4);
+}
+
+.legal-section ul li {
+  position: relative;
+  padding-left: 1.5rem;
+}
+
+.legal-section ul li::before {
+  content: '•';
+  position: absolute;
+  left: 0.35rem;
+  color: var(--hm-primary-500, #7ba6ff);
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.legal-page {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .legal-header,
+  .legal-section,
+  .legal-header::after,
+  .legal-section::after,
+  .legal-card,
+  .legal-card:hover {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}

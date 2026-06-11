@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title data-i18n="calendar.pageTitle">Calendar</title>
+  <link rel="icon" type="image/png" href="media/logo.png" />
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css"
+  />
+  <link rel="stylesheet" href="utils/css/style.css" />
+  <link rel="stylesheet" href="utils/css/kalender.css" />
+  <link rel="stylesheet" href="assets/page-transitions.css" />
+</head>
+<body class="calendar-theme">
+  <div id="pageContent">
+  <main class="calendar-page" id="main">
+    <section class="calendar-intro">
+      <div class="calendar-intro__heading">
+        <p class="calendar-header__label" data-i18n="calendar.header.badge">Calendar hub</p>
+        <h1 class="calendar-header__title" data-i18n="calendar.heading">📅 Calendar</h1>
+        <p class="calendar-header__subtitle" data-i18n="calendar.header.subtitle">
+          Real-time overview for homework, exams and events.
+        </p>
+      </div>
+    </section>
+    <!-- Mobile-only calendar UI -->
+    <div class="calendar-mobile-bar" data-calendar-mobile-bar>
+      <div class="calendar-mobile-bar__date" data-calendar-mobile-date>Mo, 29. Jan</div>
+      <div class="calendar-mobile-bar__class">
+        <label class="visually-hidden" for="calendar-class-select-mobile">Class</label>
+        <select id="calendar-class-select-mobile" data-calendar-mobile-class-select></select>
+      </div>
+      <button
+        type="button"
+        class="calendar-mobile-bar__filter"
+        data-calendar-filter-toggle
+        aria-label="Filter calendar entries"
+      >
+        <span aria-hidden="true">⚙️</span>
+      </button>
+    </div>
+    <div class="calendar-mobile-controls" data-calendar-mobile-controls>
+      <div class="calendar-mobile-view-switch" role="group" aria-label="Select calendar view">
+        <button type="button" class="calendar-mobile-view-switch__button" data-mobile-view="day">
+          <span aria-hidden="true">📋</span>
+          <span>Day</span>
+        </button>
+        <button type="button" class="calendar-mobile-view-switch__button" data-mobile-view="week">
+          <span aria-hidden="true">🗓️</span>
+          <span>Week</span>
+        </button>
+        <button type="button" class="calendar-mobile-view-switch__button" data-mobile-view="month">
+          <span aria-hidden="true">📆</span>
+          <span>Month</span>
+        </button>
+      </div>
+      <div class="calendar-mobile-nav" role="group" aria-label="Calendar navigation">
+        <button type="button" class="calendar-mobile-nav__button" data-mobile-nav="prev" aria-label="Previous">
+          <span aria-hidden="true">◀</span>
+        </button>
+        <span class="calendar-mobile-nav__label" data-calendar-mobile-label>Current</span>
+        <button type="button" class="calendar-mobile-nav__button" data-mobile-nav="next" aria-label="Next">
+          <span aria-hidden="true">▶</span>
+        </button>
+        <button type="button" class="calendar-mobile-nav__button" data-mobile-nav="today">Today</button>
+      </div>
+      <div class="calendar-mobile-carousel" data-calendar-mobile-carousel></div>
+    </div>
+    <section class="calendar-shell" aria-live="polite">
+      <div class="calendar-weekstrip" data-week-strip>
+        <span class="calendar-weekstrip__label" data-i18n="calendar.weekStrip.label">Calendar weeks</span>
+        <div class="calendar-weekstrip__list" data-week-strip-list role="listbox"></div>
+      </div>
+      <div class="calendar-controls" data-calendar-controls>
+        <div
+          class="calendar-month-nav"
+          role="toolbar"
+          aria-label="Month navigation"
+          data-i18n-attr="aria-label:calendar.monthNav.label"
+        >
+          <button
+            type="button"
+            class="calendar-month-nav__button calendar-month-nav__button--prev"
+            data-calendar-nav="prev"
+            aria-label="Previous month"
+            data-i18n-attr="aria-label:calendar.monthNav.previous"
+          >
+            <span aria-hidden="true">◀</span>
+            <span class="visually-hidden" data-i18n="calendar.monthNav.previous">Previous month</span>
+          </button>
+          <div
+            class="calendar-view-switch"
+            role="group"
+            aria-label="Select calendar view"
+            data-i18n-attr="aria-label:calendar.viewSwitch.label"
+          >
+            <button
+              type="button"
+              class="calendar-view-switch__button"
+              data-calendar-view="dayGridMonth"
+              aria-pressed="false"
+              data-i18n="calendar.views.month"
+            >
+              Month
+            </button>
+            <button
+              type="button"
+              class="calendar-view-switch__button"
+              data-calendar-view="timeGridWeek"
+              aria-pressed="false"
+              data-i18n="calendar.views.week"
+            >
+              Week
+            </button>
+            <button
+              type="button"
+              class="calendar-view-switch__button"
+              data-calendar-view="timeGridDay"
+              aria-pressed="false"
+              data-i18n="calendar.views.day"
+            >
+              Day
+            </button>
+          </div>
+          <button
+            type="button"
+            class="calendar-month-nav__button calendar-month-nav__button--next"
+            data-calendar-nav="next"
+            aria-label="Next month"
+            data-i18n-attr="aria-label:calendar.monthNav.next"
+          >
+            <span class="visually-hidden" data-i18n="calendar.monthNav.next">Next month</span>
+            <span aria-hidden="true">▶</span>
+          </button>
+          <button
+            type="button"
+            class="calendar-month-nav__button calendar-month-nav__button--today"
+            data-calendar-nav="today"
+            aria-label="Go to today"
+            data-i18n-attr="aria-label:calendar.monthNav.today"
+          >
+            <span data-i18n="calendar.monthNav.today">Today</span>
+          </button>
+        </div>
+        <div class="calendar-class-selector" data-class-selector hidden>
+          <label for="calendar-class-select" data-i18n="calendar.classSelector.label">Class</label>
+          <select id="calendar-class-select" data-class-select>
+            <option value="" disabled selected data-i18n="calendar.classSelector.placeholder">Select class</option>
+          </select>
+        </div>
+        <span
+          class="calendar-month-nav__label"
+          data-calendar-month-label
+          data-i18n="calendar.monthNav.current"
+        >
+          Current month
+        </span>
+      </div>
+      <div class="calendar-shell__legend" role="presentation">
+        <div class="calendar-legend" role="list">
+          <span class="calendar-legend__item" data-type="hausaufgabe" role="listitem">
+            <span class="calendar-legend__dot" aria-hidden="true"></span>
+            <span data-i18n="calendar.legend.homework">Homework</span>
+          </span>
+          <span class="calendar-legend__item" data-type="pruefung" role="listitem">
+            <span class="calendar-legend__dot" aria-hidden="true"></span>
+            <span data-i18n="calendar.legend.exam">Exam</span>
+          </span>
+          <span class="calendar-legend__item" data-type="event" role="listitem">
+            <span class="calendar-legend__dot" aria-hidden="true"></span>
+            <span data-i18n="calendar.legend.event">Event</span>
+          </span>
+          <span class="calendar-legend__item" data-type="ferien" role="listitem">
+            <span class="calendar-legend__dot" aria-hidden="true"></span>
+            <span data-i18n="calendar.legend.holiday">Holidays &amp; Breaks</span>
+          </span>
+          <span class="calendar-legend__item" data-type="todo" role="listitem">
+            <span class="calendar-legend__dot" aria-hidden="true"></span>
+            <span data-i18n="calendar.legend.todo">ToDo</span>
+          </span>
+        </div>
+      </div>
+      <div
+        id="calendar"
+        data-state="loading"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        data-i18n="calendar.status.loading"
+      >
+        Loading calendar …
+      </div>
+      <!-- Mobile-only agenda and month views -->
+      <div class="calendar-agenda-view" data-calendar-agenda></div>
+      <div class="calendar-month-mobile" data-calendar-month></div>
+    </section>
+  </main>
+
+  <!-- Mobile-only filter bottom sheet -->
+  <div class="calendar-filter-sheet hm-modal-overlay" data-calendar-filter-sheet>
+    <div class="calendar-filter-sheet__panel" role="dialog" aria-modal="true" aria-label="Calendar filters">
+      <div class="calendar-filter-sheet__header">
+        <h2 class="calendar-filter-sheet__title">Filter &amp; legend</h2>
+        <button type="button" class="calendar-filter-sheet__close" data-calendar-filter-close aria-label="Close">
+          ✕
+        </button>
+      </div>
+      <div class="calendar-filter-sheet__body">
+        <label class="calendar-filter-toggle" data-filter-type="hausaufgabe">
+          <input type="checkbox" checked />
+          <span class="calendar-filter-toggle__dot calendar-filter-toggle__dot--hausaufgabe"></span>
+          <span>Homework</span>
+        </label>
+        <label class="calendar-filter-toggle" data-filter-type="pruefung">
+          <input type="checkbox" checked />
+          <span class="calendar-filter-toggle__dot calendar-filter-toggle__dot--pruefung"></span>
+          <span>Exam</span>
+        </label>
+        <label class="calendar-filter-toggle" data-filter-type="event">
+          <input type="checkbox" checked />
+          <span class="calendar-filter-toggle__dot calendar-filter-toggle__dot--event"></span>
+          <span>Event</span>
+        </label>
+        <label class="calendar-filter-toggle" data-filter-type="ferien">
+          <input type="checkbox" checked />
+          <span class="calendar-filter-toggle__dot calendar-filter-toggle__dot--ferien"></span>
+          <span>Holidays &amp; Breaks</span>
+        </label>
+        <label class="calendar-filter-toggle" data-filter-type="todo">
+          <input type="checkbox" checked />
+          <span class="calendar-filter-toggle__dot calendar-filter-toggle__dot--todo"></span>
+          <span data-i18n="calendar.legend.todo">ToDo</span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <footer
+    class="calendar-action-bar"
+    data-i18n-attr="aria-label:calendar.actionBar.label"
+    aria-label="Calendar actions"
+  >
+    <div class="calendar-action-bar__inner">
+      <button
+        type="button"
+        class="calendar-cta calendar-cta--primary"
+        data-action="create"
+        data-i18n-attr="aria-label:calendar.actions.create.tooltip,title:calendar.actions.create.tooltip,data-tooltip:calendar.actions.create.tooltip"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 5v14"></path>
+          <path d="M5 12h14"></path>
+        </svg>
+        <span class="calendar-cta__label" data-i18n="calendar.actions.create.label">New entry</span>
+      </button>
+      <button
+        type="button"
+        class="calendar-cta calendar-cta--secondary"
+        data-action="export"
+        data-i18n-attr="aria-label:calendar.actions.export.tooltip,title:calendar.actions.export.tooltip,data-tooltip:calendar.actions.export.tooltip"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <path d="M7 10l5 5 5-5"></path>
+          <path d="M12 4v11"></path>
+        </svg>
+        <span class="calendar-cta__label" data-i18n="calendar.actions.export.label">Export</span>
+      </button>
+      <button
+        type="button"
+        class="calendar-cta calendar-cta--secondary"
+        data-action="back"
+        data-i18n-attr="aria-label:calendar.actions.back.tooltip,title:calendar.actions.back.tooltip,data-tooltip:calendar.actions.back.tooltip"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M15 18l-6-6 6-6"></path>
+          <path d="M21 12H9"></path>
+        </svg>
+        <span class="calendar-cta__label" data-i18n="calendar.actions.back.label">Back to overview</span>
+      </button>
+    </div>
+  </footer>
+
+  <div id="fc-modal-overlay" class="hm-modal-overlay" onclick="closeModal()">
+    <div class="hm-modal" role="dialog" aria-modal="true" tabindex="-1" onclick="event.stopPropagation()">
+      <header class="hm-modal__header">
+        <button
+          type="button"
+          class="hm-modal__close"
+          onclick="closeModal()"
+          aria-label="Close"
+          data-i18n-attr="aria-label:calendar.modal.buttons.close"
+        >
+          <span class="visually-hidden" data-i18n="calendar.modal.buttons.close">Close</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M18 6 6 18"></path>
+            <path d="M6 6l12 12"></path>
+          </svg>
+        </button>
+        <div class="hm-modal__title-wrapper">
+          <h2 id="fc-modal-title" class="hm-modal__title" data-i18n="calendar.modal.viewTitle">Calendar entry</h2>
+        </div>
+      </header>
+
+      <div id="fc-view-mode" class="hm-modal__section">
+        <div class="hm-modal__body">
+          <div class="hm-modal__field">
+            <label data-i18n="calendar.modal.labels.type">Type</label>
+            <span id="fc-modal-type"></span>
+          </div>
+          <div class="hm-modal__field">
+            <label data-view-label="subject" data-i18n="calendar.modal.labels.subject">Subject</label>
+            <span id="fc-modal-subject"></span>
+          </div>
+          <div class="hm-modal__field">
+            <label data-i18n="calendar.modal.labels.date">Date</label>
+            <span id="fc-modal-date"></span>
+          </div>
+        </div>
+        <div id="fc-modal-desc" class="hm-modal__desc" data-i18n-html="calendar.modal.noDescription"></div>
+        <div class="hm-modal__footer">
+          <button
+            type="button"
+            class="hm-btn hm-btn--secondary"
+            onclick="closeModal()"
+            data-i18n="calendar.modal.buttons.close"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+
+      <form id="fc-edit-form" class="hm-modal__form is-hidden" onsubmit="saveEdit(event)" novalidate>
+        <input type="hidden" id="fc-entry-id" />
+
+        <div class="hm-modal__body">
+          <div class="hm-modal__field" data-field="type">
+            <label for="fc-edit-type" data-i18n="calendar.modal.labels.type">Type</label>
+            <select
+              id="fc-edit-type"
+              class="hm-select hm-select--type"
+              name="typ"
+              required
+              data-hm-modal-initial-focus
+            >
+              <option value="hausaufgabe" data-i18n="calendar.legend.homework">Homework</option>
+              <option value="pruefung" data-i18n="calendar.legend.exam">Exam</option>
+              <option value="event" data-i18n="calendar.legend.event">Event</option>
+              <option value="ferien" data-i18n="calendar.legend.holiday">Holidays &amp; Breaks</option>
+              <option value="todo" data-i18n="calendar.legend.todo">ToDo</option>
+            </select>
+          </div>
+
+          <div class="hm-modal__field is-hidden" data-field="event-title">
+            <label for="fc-edit-event-title" data-i18n="calendar.modal.labels.eventTitle">Event title</label>
+            <input
+              type="text"
+              id="fc-edit-event-title"
+              name="event-titel"
+              placeholder="Event name"
+              data-i18n-attr="placeholder:calendar.modal.placeholders.eventTitle"
+            />
+          </div>
+
+          <div class="hm-modal__field" data-field="subject">
+            <label for="fc-edit-subject" data-i18n="calendar.modal.labels.subject">Subject</label>
+            <select id="fc-edit-subject" class="hm-select hm-select--subject" name="fach">
+              <option value="" data-i18n="calendar.modal.placeholders.subject">– select –</option>
+              <option>BG</option>
+              <option>BI</option>
+              <option>CH</option>
+              <option>DE</option>
+              <option>EN</option>
+              <option>EF</option>
+              <option>FR</option>
+              <option>GG</option>
+              <option>GS</option>
+              <option>IN</option>
+              <option>ISV</option>
+              <option>IT</option>
+              <option>MA</option>
+              <option>MU</option>
+              <option>PH</option>
+              <option>PS</option>
+              <option>SBG</option>
+              <option>SBC-BI</option>
+              <option>SBC-CH</option>
+              <option>SES</option>
+              <option>SMU</option>
+              <option>SP</option>
+              <option>SPM-MA</option>
+              <option>SPM-PS</option>
+              <option>Sport</option>
+              <option>SWR</option>
+              <option>TG</option>
+              <option>WR</option>
+            </select>
+          </div>
+
+          <div class="hm-modal__field" data-field="date">
+            <label for="fc-edit-date" data-i18n="calendar.modal.labels.date">Date</label>
+            <input type="date" id="fc-edit-date" name="datum" required />
+          </div>
+
+          <div class="hm-modal__field is-hidden" data-field="end-date">
+            <label for="fc-edit-end-date" data-i18n="calendar.modal.labels.endDate">End date</label>
+            <input type="date" id="fc-edit-end-date" name="enddatum" />
+          </div>
+
+          <div class="hm-modal__field" data-field="start">
+            <label for="fc-edit-start" data-i18n="calendar.modal.labels.start">Start time</label>
+            <input type="time" id="fc-edit-start" name="startzeit" />
+          </div>
+
+          <div class="hm-modal__field" data-field="end">
+            <label for="fc-edit-end" data-i18n="calendar.modal.labels.end">End time</label>
+            <input type="time" id="fc-edit-end" name="endzeit" />
+          </div>
+
+          <div class="hm-modal__field" data-field="description">
+            <label for="fc-edit-desc" data-i18n="calendar.modal.labels.descriptionOptional">Description (optional)</label>
+            <textarea
+              id="fc-edit-desc"
+              name="beschreibung"
+              rows="4"
+              placeholder="Details"
+              data-i18n-attr="placeholder:calendar.modal.placeholders.description"
+            ></textarea>
+          </div>
+        </div>
+
+        <div class="hm-modal__footer">
+          <button
+            type="button"
+            class="hm-btn hm-btn--secondary"
+            data-role="cancel"
+            data-i18n="calendar.modal.buttons.cancel"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="hm-btn hm-btn--primary"
+            data-role="submit"
+            data-i18n="calendar.modal.buttons.save"
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            class="hm-btn hm-btn--danger"
+            data-role="delete"
+            onclick="openDeleteConfirmModal()"
+            data-i18n="calendar.modal.buttons.delete"
+          >
+            Delete
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="entry-modal-overlay" class="hm-modal-overlay" onclick="closeEntryModal()">
+    <div class="hm-modal" role="dialog" aria-modal="true" tabindex="-1" onclick="event.stopPropagation()">
+      <header class="hm-modal__header">
+        <button
+          type="button"
+          class="hm-modal__close"
+          onclick="closeEntryModal()"
+          aria-label="Close"
+          data-i18n-attr="aria-label:calendar.modal.buttons.close"
+        >
+          <span class="visually-hidden" data-i18n="calendar.modal.buttons.close">Close</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M18 6 6 18"></path>
+            <path d="M6 6l12 12"></path>
+          </svg>
+        </button>
+        <div class="hm-modal__title-wrapper">
+          <h2 class="hm-modal__title" data-i18n="calendar.modal.createTitle">Create entry</h2>
+        </div>
+      </header>
+
+      <form id="entry-form" class="hm-modal__form" onsubmit="saveEntry(event)" novalidate>
+        <div class="hm-modal__body">
+          <div class="hm-modal__field" data-field="type">
+            <label for="typ" data-i18n="calendar.modal.labels.type">Type</label>
+            <select
+              id="typ"
+              class="hm-select hm-select--type"
+              name="typ"
+              required
+              data-hm-modal-initial-focus
+            >
+              <option value="hausaufgabe" data-i18n="calendar.legend.homework">Homework</option>
+              <option value="pruefung" data-i18n="calendar.legend.exam">Exam</option>
+              <option value="event" data-i18n="calendar.legend.event">Event</option>
+              <option value="ferien" data-i18n="calendar.legend.holiday">Holidays &amp; Breaks</option>
+              <option value="todo" data-i18n="calendar.legend.todo">ToDo</option>
+            </select>
+          </div>
+
+          <div class="hm-modal__field is-hidden" data-field="event-title">
+            <label for="event-titel" data-i18n="calendar.modal.labels.eventTitle">Event title</label>
+            <input
+              type="text"
+              id="event-titel"
+              name="event-titel"
+              placeholder="Event name"
+              data-i18n-attr="placeholder:calendar.modal.placeholders.eventTitle"
+            />
+            <p class="field-hint" data-i18n="calendar.modal.hints.eventTitle">Required for events.</p>
+          </div>
+
+          <div class="hm-modal__field" data-field="subject">
+            <label for="fach" data-i18n="calendar.modal.labels.subject">Subject</label>
+            <select id="fach" class="hm-select hm-select--subject" name="fach">
+              <option value="" data-i18n="calendar.modal.placeholders.subject">– select –</option>
+              <option>BG</option>
+              <option>BI</option>
+              <option>CH</option>
+              <option>DE</option>
+              <option>EN</option>
+              <option>EF</option>
+              <option>FR</option>
+              <option>GG</option>
+              <option>GS</option>
+              <option>IN</option>
+              <option>ISV</option>
+              <option>IT</option>
+              <option>MA</option>
+              <option>MU</option>
+              <option>PH</option>
+              <option>PS</option>
+              <option>SBG</option>
+              <option>SBC-BI</option>
+              <option>SBC-CH</option>
+              <option>SES</option>
+              <option>SMU</option>
+              <option>SP</option>
+              <option>SPM-MA</option>
+              <option>SPM-PS</option>
+              <option>Sport</option>
+              <option>SWR</option>
+              <option>TG</option>
+              <option>WR</option>
+            </select>
+          </div>
+
+          <div
+            class="hm-modal__field"
+            data-field="classes"
+            data-entry-class-field
+            data-entry-class-hint="Select one or more classes."
+            hidden
+          >
+            <label>Classes</label>
+            <div class="entry-class-checkboxes" data-entry-class-options>
+              <p class="field-hint">Loading classes…</p>
+            </div>
+          </div>
+
+          <div class="hm-modal__field" data-field="date">
+            <label for="datum" data-i18n="calendar.modal.labels.date">Date</label>
+            <input type="date" id="datum" name="datum" required />
+          </div>
+
+          <div class="hm-modal__field is-hidden" data-field="end-date">
+            <label for="enddatum" data-i18n="calendar.modal.labels.endDate">End date</label>
+            <input type="date" id="enddatum" name="enddatum" />
+          </div>
+
+          <div class="hm-modal__field" data-field="start">
+            <label for="startzeit" data-i18n="calendar.modal.labels.start">Start time</label>
+            <input type="time" id="startzeit" name="startzeit" />
+          </div>
+
+          <div class="hm-modal__field" data-field="end">
+            <label for="endzeit" data-i18n="calendar.modal.labels.end">End time</label>
+            <input type="time" id="endzeit" name="endzeit" />
+          </div>
+
+          <div class="hm-modal__field" data-field="description">
+            <label for="beschreibung" data-i18n="calendar.modal.labels.descriptionOptional">Description (optional)</label>
+            <textarea
+              id="beschreibung"
+              name="beschreibung"
+              rows="3"
+              placeholder="Summary"
+              data-i18n-attr="placeholder:calendar.modal.placeholders.descriptionShort"
+            ></textarea>
+          </div>
+        </div>
+
+        <div class="hm-modal__footer">
+          <button
+            type="button"
+            class="hm-btn hm-btn--secondary"
+            data-role="cancel"
+            onclick="closeEntryModal()"
+            data-i18n="calendar.modal.buttons.cancel"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            id="saveButton"
+            class="hm-btn hm-btn--primary"
+            data-role="submit"
+            data-i18n="calendar.modal.buttons.add"
+          >
+            Add entry
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div
+    id="calendar-delete-confirm-overlay"
+    class="hm-modal-overlay"
+    aria-hidden="true"
+    onclick="closeDeleteConfirmModal()"
+  >
+    <div
+      class="hm-modal hm-modal--compact"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="calendar-delete-confirm-title"
+      onclick="event.stopPropagation()"
+    >
+      <header class="hm-modal__header">
+        <button
+          type="button"
+          class="hm-modal__close"
+          onclick="closeDeleteConfirmModal()"
+          aria-label="Close"
+          data-i18n-attr="aria-label:calendar.modal.buttons.close"
+        >
+          <span class="visually-hidden" data-i18n="calendar.modal.buttons.close">Close</span>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M18 6 6 18"></path>
+            <path d="M6 6l12 12"></path>
+          </svg>
+        </button>
+        <div class="hm-modal__title-wrapper">
+          <h2
+            id="calendar-delete-confirm-title"
+            class="hm-modal__title"
+            data-i18n="calendar.modal.deleteConfirm.title"
+          >
+            Delete entry?
+          </h2>
+        </div>
+      </header>
+
+      <div class="hm-modal__body">
+        <p data-i18n="calendar.modal.deleteConfirm.message">
+          Are you sure you want to delete this entry? This action cannot be undone.
+        </p>
+      </div>
+
+      <div class="hm-modal__footer">
+        <button
+          type="button"
+          class="hm-btn hm-btn--secondary"
+          data-role="cancel"
+          data-hm-modal-initial-focus
+          onclick="closeDeleteConfirmModal()"
+          data-i18n="calendar.modal.buttons.cancel"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="hm-btn hm-btn--danger"
+          data-role="confirm"
+          onclick="confirmDeleteEntry()"
+          data-i18n="calendar.modal.buttons.delete"
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+
+    <div id="calendar-toast-container" class="calendar-toast-container" aria-live="polite" aria-atomic="true"></div>
+  </div>
+
+  <script type="module" src="utils/js/header.js"></script>
+  <script src="assets/page-transitions.js" defer></script>
+  <script src="utils/js/calendar-header.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js" defer></script>
+<script src="utils/js/i18n.js" defer></script>
+  <script src="utils/js/i18n-anim.js" defer></script>
+  <script src="utils/js/modal.js" defer></script>
+  <script src="utils/js/overlay.js" defer></script>
+  <script src="utils/js/toast.js" defer></script>
+  <script src="utils/js/footer.js" defer></script>
+  <script src="utils/js/toast.js" defer></script>
+  <script src="utils/js/auth.js" defer></script>
+  <script src="utils/js/calendar-permissions.js" defer></script>
+  <script src="utils/js/kalender.js" defer></script>
+  <script src="utils/js/calendar-mobile.js" defer></script>
+</body>
+</html>

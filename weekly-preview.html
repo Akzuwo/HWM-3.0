@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="weeklyPreview.pageTitle">Weekly Preview</title>
+  <link rel="icon" type="image/png" href="media/logo.png">
+  <link rel="stylesheet" href="utils/css/style.css">
+  <link rel="stylesheet" href="utils/css/weekly-preview.css">
+  <link rel="stylesheet" href="assets/page-transitions.css" />
+</head>
+<body class="weekly-preview-page">
+  <div id="pageContent">
+    <main class="weekly-preview" id="main">
+      <header class="weekly-preview__header">
+        <div class="weekly-preview__heading">
+          <h1 class="weekly-preview__title" data-i18n="weeklyPreview.title">🧠 Weekly Preview</h1>
+          <p class="weekly-preview__lead" data-i18n="weeklyPreview.lead">AI summary of tasks and events for the next 7 days.</p>
+        </div>
+        <div class="calendar-class-selector class-select" data-class-selector hidden>
+          <label for="weekly-preview-class-select" data-i18n="weeklyPreview.classLabel">Class</label>
+          <select id="weekly-preview-class-select" data-class-select>
+            <option value="" disabled selected data-i18n="weeklyPreview.classPlaceholder">Select class</option>
+          </select>
+        </div>
+      </header>
+
+      <section class="weekly-preview__card" aria-live="polite">
+        <p class="weekly-preview__status weekly-preview__status--loading" id="weekly-preview-status" data-i18n="weeklyPreview.loading">Generating preview…</p>
+        <p class="weekly-preview__intro" id="weekly-preview-intro" hidden></p>
+        <ul class="weekly-preview__list" id="weekly-preview-list" hidden></ul>
+        <p class="weekly-preview__meta" id="weekly-preview-meta" hidden></p>
+      </section>
+
+      <div class="weekly-preview__actions">
+        <button type="button" class="weekly-preview__button weekly-preview__button--primary" id="weekly-preview-refresh">
+          <span data-i18n="weeklyPreview.refresh">Regenerate</span>
+        </button>
+        <button type="button" class="weekly-preview__button weekly-preview__button--secondary" id="weekly-preview-back">
+          <span data-i18n="weeklyPreview.back">◀️ Back to overview</span>
+        </button>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="utils/js/header.js"></script>
+  <script src="assets/page-transitions.js" defer></script>
+  <script src="utils/js/i18n.js" defer></script>
+  <script src="utils/js/i18n-anim.js" defer></script>
+  <script src="utils/js/auth.js" defer></script>
+  <script src="utils/js/calendar-permissions.js" defer></script>
+  <script src="utils/js/class-selector.js" defer></script>
+  <script src="utils/js/weekly-preview.js" defer></script>
+</body>
+</html>

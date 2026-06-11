@@ -37,19 +37,25 @@
           body:
             'Statt verstreuter Chats und vergessener Notizen bündelt die Plattform Termine, Erinnerungen und praktische Werkzeuge in einer klaren Oberfläche – jederzeit verfügbar und gemeinsam nutzbar.',
         },
-        status: {
-          title: 'Hinweis: Work in Progress',
+        hwm3: {
+          title: 'Homework Manager 3 ist in Entwicklung',
           body:
-            'Homework Manager 2.0 wird noch aktiv entwickelt. Manche Bereiche funktionieren daher noch nicht immer wie erwartet.',
+            'Homework Manager 2 bleibt als Legacy-Version verfügbar. Die nächste Generation, Homework Manager 3, wird aktuell neu entwickelt und bringt eine modernere Oberfläche, bessere mobile Nutzung und weitere Verbesserungen.',
+          cta: 'Zu Homework Manager 3',
+        },
+        status: {
+          title: 'Homework Manager 3 ist in Entwicklung',
+          body:
+            'Homework Manager 2 bleibt als Legacy-Version verfügbar. Die nächste Generation wird aktuell neu entwickelt.',
         },
         releaseGoal: {
-          title: 'Release-Ziel',
-          body: 'Hinweis: Der Release von 2.0 wurde aufgrund mangelnder Kapazitäten und Qualitätssicherung auf Juli 2026 verschoben.',
+          title: 'Homework Manager 3 ist in Entwicklung',
+          body: 'Homework Manager 2 bleibt als Legacy-Version verfügbar.',
         },
         release: {
           title: 'Release 2.0',
           date:
-            'Hinweis: Der Release von 2.0 wurde aufgrund mangelnder Kapazitäten und Qualitätssicherung auf Juli 2026 verschoben.',
+            'Homework Manager 2 bleibt als Legacy-Version verfügbar.',
           summary:
             'Release 2.0 bündelt alles, was den Schulalltag leichter macht – von der neuen Oberfläche über Events bis hin zu Rollen, Datenschutz und frischen Übersichten.',
           highlights: {
@@ -848,18 +854,24 @@
           body:
             'Instead of scattered chats and forgotten notes, the platform unifies schedules, reminders and handy utilities in one clear interface – available at any time and designed for teamwork.',
         },
-        status: {
-          title: 'Heads-up: Work in Progress',
+        hwm3: {
+          title: 'Homework Manager 3 is in development',
           body:
-            'Homework Manager 2.0 is still under active development, so a few areas may not work perfectly just yet.',
+            'Homework Manager 2 remains available as the legacy version. The next generation, Homework Manager 3, is currently being rebuilt with a more modern interface, better mobile use, and further improvements.',
+          cta: 'Go to Homework Manager 3',
+        },
+        status: {
+          title: 'Homework Manager 3 is in development',
+          body:
+            'Homework Manager 2 remains available as the legacy version. The next generation is currently being rebuilt.',
         },
         releaseGoal: {
-          title: 'Release goal',
-          body: 'Notice: The 2.0 release has been moved to July 2026 due to limited capacity and quality assurance.',
+          title: 'Homework Manager 3 is in development',
+          body: 'Homework Manager 2 remains available as the legacy version.',
         },
         release: {
           title: 'Release 2.0',
-          date: 'Notice: The 2.0 release has been moved to July 2026 due to limited capacity and quality assurance.',
+          date: 'Homework Manager 2 remains available as the legacy version.',
           summary:
             'Release 2.0 focuses on classroom essentials – a redesigned interface, powerful event tools, smarter overviews, and role-aware accounts.',
           highlights: {
@@ -1656,19 +1668,25 @@
           body:
             'Al posto di chat disperse e appunti dimenticati, la piattaforma riunisce scadenze, promemoria e strumenti utili in un\'unica interfaccia chiara – sempre disponibile e pensata per il lavoro di squadra.',
         },
-        status: {
-          title: 'Avviso: Work in Progress',
+        hwm3: {
+          title: 'Homework Manager 3 è in sviluppo',
           body:
-            'Homework Manager 2.0 è ancora in fase di sviluppo attivo, quindi alcune sezioni potrebbero non funzionare sempre perfettamente.',
+            'Homework Manager 2 resta disponibile come versione legacy. La prossima generazione, Homework Manager 3, è attualmente in sviluppo e porterà un’interfaccia più moderna, un uso migliore su mobile e ulteriori miglioramenti.',
+          cta: 'Vai a Homework Manager 3',
+        },
+        status: {
+          title: 'Homework Manager 3 è in sviluppo',
+          body:
+            'Homework Manager 2 resta disponibile come versione legacy. La prossima generazione è attualmente in sviluppo.',
         },
         releaseGoal: {
-          title: 'Obiettivo di rilascio',
-          body: 'Avviso: la release 2.0 è stata rimandata a luglio 2026 per carenza di capacità e di controllo qualità.',
+          title: 'Homework Manager 3 è in sviluppo',
+          body: 'Homework Manager 2 resta disponibile come versione legacy.',
         },
         release: {
           title: 'Release 2.0',
           date:
-            'Avviso: la release 2.0 è stata rimandata a luglio 2026 per carenza di capacità e di controllo qualità.',
+            'Homework Manager 2 resta disponibile come versione legacy.',
           summary:
             'La release 2.0 porta tutto ciò che serve in classe: interfaccia rinnovata, gestione degli eventi, ruoli dedicati e maggiore attenzione a privacy e panoramiche.',
           highlights: {
@@ -2466,19 +2484,25 @@
           body:
             'Plutôt que des discussions dispersées et des notes oubliées, la plateforme rassemble horaires, rappels et outils pratiques dans une interface claire – disponible à tout moment et pensée pour le travail en équipe.',
         },
-        status: {
-          title: 'Info : Work in Progress',
+        hwm3: {
+          title: 'Homework Manager 3 est en développement',
           body:
-            'Homework Manager 2.0 est toujours en cours de développement, il se peut donc que certaines sections ne fonctionnent pas encore parfaitement.',
+            'Homework Manager 2 reste disponible comme version legacy. La prochaine génération, Homework Manager 3, est actuellement développée avec une interface plus moderne, une meilleure utilisation mobile et d’autres améliorations.',
+          cta: 'Aller à Homework Manager 3',
+        },
+        status: {
+          title: 'Homework Manager 3 est en développement',
+          body:
+            'Homework Manager 2 reste disponible comme version legacy. La prochaine génération est actuellement développée.',
         },
         releaseGoal: {
-          title: 'Objectif de sortie',
-          body: 'Information : la sortie de la version 2.0 est reportée à juillet 2026 en raison de capacités limitées et de l’assurance qualité.',
+          title: 'Homework Manager 3 est en développement',
+          body: 'Homework Manager 2 reste disponible comme version legacy.',
         },
         release: {
           title: 'Version 2.0',
           date:
-            'Information : la sortie de la version 2.0 est reportée à juillet 2026 en raison de capacités limitées et de l’assurance qualité.',
+            'Homework Manager 2 reste disponible comme version legacy.',
           summary:
             'La version 2.0 met l’accent sur l’essentiel en classe : interface repensée, gestion des événements, nouveaux rôles et contrôles de confidentialité.',
           highlights: {

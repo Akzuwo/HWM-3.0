@@ -1,0 +1,233 @@
+<header class="hm-navbar" data-nav data-i18n-attr="aria-label:common.nav.primary" role="navigation" aria-label="Main navigation">
+  <div class="hm-navbar__inner header">
+    <div class="header-left logo">
+      <a class="logo-link" href="#" data-brand-link>
+        <img data-logo alt="" aria-hidden="true" width="32" height="32" />
+        <span class="brand sr-only" data-i18n="common.appName">Homework Manager</span>
+      </a>
+    </div>
+
+    <div class="header-center">
+      <nav class="nav-links" aria-label="Main navigation">
+        <a class="nav-link" data-route="index.html" data-i18n="common.nav.home">Home</a>
+        <a class="nav-link" data-route="kalender.html" data-i18n="common.nav.calendar">Calendar</a>
+        <a class="nav-link" data-route="upcoming.html" data-i18n="common.nav.upcoming">Upcoming</a>
+        <a class="nav-link" data-route="weekly-preview.html" data-i18n="common.nav.weeklyPreview">Weekly Preview</a>
+        <a class="nav-link" data-route="stundenplan.html" data-i18n="common.nav.currentSubject">Current Subject</a>
+        <a class="nav-link" data-route="notenrechner.html" data-i18n="common.nav.grades">Grade Calculator</a>
+      </nav>
+    </div>
+
+    <div class="header-right">
+      <div class="nav-right nav-right--desktop">
+        <div class="nav-right__actions">
+          <div class="language-switcher" data-language>
+            <button class="lang-switch" type="button" data-language-toggle aria-haspopup="true" aria-expanded="false" data-i18n-attr="aria-label:common.nav.language">
+              <span class="lang-switch__icon" aria-hidden="true">🌐</span>
+              <span class="lang-switch__code">EN</span>
+              <svg class="lang-switch__caret" viewBox="0 0 12 12" focusable="false" aria-hidden="true">
+                <path d="M2.47 4.47a.75.75 0 0 1 1.06 0L6 6.94l2.47-2.47a.75.75 0 1 1 1.06 1.06L6.53 9.47a.75.75 0 0 1-1.06 0L2.47 5.53a.75.75 0 0 1 0-1.06z" />
+              </svg>
+            </button>
+            <ul class="language-menu" data-language-menu>
+              <li>
+                <button type="button" class="language-option" data-lang="de">
+                  <span class="language-option__flag" aria-hidden="true">🇩🇪</span>
+                  <span class="language-option__text">
+                    <span class="language-option__code">DE</span>
+                    <span class="language-option__separator" aria-hidden="true">–</span>
+                    <span class="language-option__name">Deutsch</span>
+                  </span>
+                </button>
+              </li>
+              <li>
+                <button type="button" class="language-option" data-lang="en">
+                  <span class="language-option__flag" aria-hidden="true">🇬🇧</span>
+                  <span class="language-option__text">
+                    <span class="language-option__code">EN</span>
+                    <span class="language-option__separator" aria-hidden="true">–</span>
+                    <span class="language-option__name">English</span>
+                  </span>
+                </button>
+              </li>
+              <li>
+                <button type="button" class="language-option" data-lang="it">
+                  <span class="language-option__flag" aria-hidden="true">🇮🇹</span>
+                  <span class="language-option__text">
+                    <span class="language-option__code">IT</span>
+                    <span class="language-option__separator" aria-hidden="true">–</span>
+                    <span class="language-option__name">Italiano</span>
+                  </span>
+                </button>
+              </li>
+              <li>
+                <button type="button" class="language-option" data-lang="fr">
+                  <span class="language-option__flag" aria-hidden="true">🇫🇷</span>
+                  <span class="language-option__text">
+                    <span class="language-option__code">FR</span>
+                    <span class="language-option__separator" aria-hidden="true">–</span>
+                    <span class="language-option__name">Français</span>
+                  </span>
+                </button>
+              </li>
+            </ul>
+          </div>
+          <div class="user-area" data-user-area>
+            <button class="btn-login" type="button" data-auth-button aria-label="Login">
+              <span class="btn-login__icon" aria-hidden="true">👤</span>
+              <span class="btn-login__label">Log in</span>
+            </button>
+            <div class="account-control is-hidden" data-account-control aria-hidden="true">
+              <button
+                class="account-switch"
+                type="button"
+                data-account-toggle
+                aria-haspopup="true"
+                aria-expanded="false"
+                aria-label="Account"
+              >
+                <span class="account-switch__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                    <path
+                      d="M12 12c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5Zm0 2c-3.33 0-10 1.667-10 5v2h20v-2c0-3.333-6.67-5-10-5Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </span>
+                <span class="account-switch__label" data-account-label>Account</span>
+                <svg class="account-switch__caret" viewBox="0 0 12 12" focusable="false" aria-hidden="true">
+                  <path d="M2.47 4.47a.75.75 0 0 1 1.06 0L6 6.94l2.47-2.47a.75.75 0 1 1 1.06 1.06L6.53 9.47a.75.75 0 0 1-1.06 0L2.47 5.53a.75.75 0 0 1 0-1.06z" />
+                </svg>
+              </button>
+              <ul class="account-menu" data-account-menu role="menu">
+                <li>
+                  <a class="account-option" href="profile.html" data-account-profile role="menuitem">Profil</a>
+                </li>
+                <li>
+                  <button class="account-option" type="button" data-account-logout role="menuitem">Abmelden</button>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="nav-right__note mobile-hint" data-i18n="common.nav.mobileNotice">📱 Mobile edition is in development and may still have a few bugs.</div>
+      </div>
+
+      <div class="nav-mobile">
+        <button class="hm-navbar__toggle hamburger-btn" type="button" data-nav-toggle aria-expanded="false" aria-controls="hm-navbar-drawer" data-i18n-attr="aria-label:common.nav.toggle">
+          <span class="hm-navbar__toggle-box" aria-hidden="true">
+            <span class="hm-navbar__toggle-line"></span>
+            <span class="hm-navbar__toggle-line"></span>
+            <span class="hm-navbar__toggle-line"></span>
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="hm-navbar__overlay" data-nav-overlay hidden></div>
+
+  <aside class="mobile-sidebar" data-nav-drawer id="hm-navbar-drawer" aria-hidden="true">
+    <nav class="nav-links" aria-label="Main navigation">
+      <a class="nav-link" data-route="index.html" data-i18n="common.nav.home">Home</a>
+      <a class="nav-link" data-route="kalender.html" data-i18n="common.nav.calendar">Calendar</a>
+      <a class="nav-link" data-route="upcoming.html" data-i18n="common.nav.upcoming">Upcoming</a>
+      <a class="nav-link" data-route="weekly-preview.html" data-i18n="common.nav.weeklyPreview">Weekly Preview</a>
+      <a class="nav-link" data-route="stundenplan.html" data-i18n="common.nav.currentSubject">Current Subject</a>
+      <a class="nav-link" data-route="notenrechner.html" data-i18n="common.nav.grades">Grade Calculator</a>
+    </nav>
+    <div class="nav-right nav-right--mobile">
+      <div class="nav-right__actions">
+        <div class="language-switcher" data-language>
+          <button class="lang-switch" type="button" data-language-toggle aria-haspopup="true" aria-expanded="false" data-i18n-attr="aria-label:common.nav.language">
+            <span class="lang-switch__icon" aria-hidden="true">🌐</span>
+            <span class="lang-switch__code">EN</span>
+            <svg class="lang-switch__caret" viewBox="0 0 12 12" focusable="false" aria-hidden="true">
+              <path d="M2.47 4.47a.75.75 0 0 1 1.06 0L6 6.94l2.47-2.47a.75.75 0 1 1 1.06 1.06L6.53 9.47a.75.75 0 0 1-1.06 0L2.47 5.53a.75.75 0 0 1 0-1.06z" />
+            </svg>
+          </button>
+          <ul class="language-menu" data-language-menu>
+            <li>
+              <button type="button" class="language-option" data-lang="de">
+                <span class="language-option__flag" aria-hidden="true">🇩🇪</span>
+                <span class="language-option__text">
+                  <span class="language-option__code">DE</span>
+                  <span class="language-option__separator" aria-hidden="true">–</span>
+                  <span class="language-option__name">Deutsch</span>
+                </span>
+              </button>
+            </li>
+            <li>
+              <button type="button" class="language-option" data-lang="en">
+                <span class="language-option__flag" aria-hidden="true">🇬🇧</span>
+                <span class="language-option__text">
+                  <span class="language-option__code">EN</span>
+                  <span class="language-option__separator" aria-hidden="true">–</span>
+                  <span class="language-option__name">English</span>
+                </span>
+              </button>
+            </li>
+            <li>
+              <button type="button" class="language-option" data-lang="it">
+                <span class="language-option__flag" aria-hidden="true">🇮🇹</span>
+                <span class="language-option__text">
+                  <span class="language-option__code">IT</span>
+                  <span class="language-option__separator" aria-hidden="true">–</span>
+                  <span class="language-option__name">Italiano</span>
+                </span>
+              </button>
+            </li>
+            <li>
+              <button type="button" class="language-option" data-lang="fr">
+                <span class="language-option__flag" aria-hidden="true">🇫🇷</span>
+                <span class="language-option__text">
+                  <span class="language-option__code">FR</span>
+                  <span class="language-option__separator" aria-hidden="true">–</span>
+                  <span class="language-option__name">Français</span>
+                </span>
+              </button>
+            </li>
+          </ul>
+        </div>
+        <div class="user-area" data-user-area>
+          <button class="btn-login" type="button" data-auth-button aria-label="Login">
+            <span class="btn-login__icon" aria-hidden="true">👤</span>
+            <span class="btn-login__label">Log in</span>
+          </button>
+          <div class="account-control is-hidden" data-account-control aria-hidden="true">
+            <button
+              class="account-switch"
+              type="button"
+              data-account-toggle
+              aria-haspopup="true"
+              aria-expanded="false"
+              aria-label="Account"
+            >
+              <span class="account-switch__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                  <path
+                    d="M12 12c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5Zm0 2c-3.33 0-10 1.667-10 5v2h20v-2c0-3.333-6.67-5-10-5Z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </span>
+              <span class="account-switch__label" data-account-label>Account</span>
+              <svg class="account-switch__caret" viewBox="0 0 12 12" focusable="false" aria-hidden="true">
+                <path d="M2.47 4.47a.75.75 0 0 1 1.06 0L6 6.94l2.47-2.47a.75.75 0 1 1 1.06 1.06L6.53 9.47a.75.75 0 0 1-1.06 0L2.47 5.53a.75.75 0 0 1 0-1.06z" />
+              </svg>
+            </button>
+            <ul class="account-menu" data-account-menu role="menu">
+              <li>
+                <a class="account-option" href="profile.html" data-account-profile role="menuitem">Profil</a>
+              </li>
+              <li>
+                <button class="account-option" type="button" data-account-logout role="menuitem">Abmelden</button>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="nav-right__note mobile-hint" data-i18n="common.nav.mobileNotice">📱 Mobile edition is in development and may still have a few bugs.</div>
+    </div>
+  </aside>
+</header>

@@ -1,0 +1,162 @@
+:root {
+  --wp-bg: #080b12;
+  --wp-surface: #121827;
+  --wp-border: rgba(148, 163, 184, 0.24);
+  --wp-text: #f8fbff;
+  --wp-muted: #b2bfd7;
+  --wp-accent: #5b8def;
+}
+
+body.weekly-preview-page {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at 0% 0%, rgba(91, 141, 239, 0.18), transparent 45%), var(--wp-bg);
+  color: var(--wp-text);
+}
+
+main.weekly-preview {
+  width: min(980px, 92vw);
+  margin: 0 auto;
+  padding: clamp(30px, 5vw, 56px) 0 84px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.weekly-preview__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.weekly-preview__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.weekly-preview__title {
+  margin: 0;
+  font-size: clamp(1.8rem, 3.2vw, 2.35rem);
+}
+
+.weekly-preview__lead {
+  margin: 0;
+  color: var(--wp-muted);
+  max-width: 60ch;
+  line-height: 1.6;
+}
+
+.weekly-preview__card {
+  border: 1px solid var(--wp-border);
+  border-radius: 18px;
+  padding: clamp(20px, 3vw, 30px);
+  background: linear-gradient(150deg, rgba(91, 141, 239, 0.16), rgba(15, 23, 42, 0.85) 54%), var(--wp-surface);
+  box-shadow: 0 26px 52px rgba(4, 8, 18, 0.42);
+}
+
+.weekly-preview__status {
+  margin: 0;
+  color: var(--wp-muted);
+}
+
+.weekly-preview__intro {
+  margin: 0 0 0.9rem;
+  font-size: 1.06rem;
+  line-height: 1.65;
+  color: #eaf2ff;
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.weekly-preview__intro.is-visible {
+  animation: weeklyFadeUp 440ms cubic-bezier(0.19, 1, 0.22, 1) forwards;
+}
+
+.weekly-preview__status--loading::before {
+  content: "⏳ ";
+}
+
+.weekly-preview__list {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.62rem;
+}
+
+.weekly-preview__list li {
+  line-height: 1.55;
+  padding: 0.72rem 0.9rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 11px;
+  background: rgba(15, 23, 42, 0.42);
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.weekly-preview__list li.is-visible {
+  animation: weeklyFadeUp 460ms cubic-bezier(0.19, 1, 0.22, 1) forwards;
+  animation-delay: calc(var(--item-index, 0) * 65ms);
+}
+
+.weekly-preview__meta {
+  margin: 18px 0 0;
+  color: var(--wp-muted);
+  font-size: 0.92rem;
+}
+
+.weekly-preview__actions {
+  display: flex;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.weekly-preview__button {
+  border-radius: 12px;
+  min-height: 46px;
+  padding: 0 20px;
+  border: 1px solid var(--wp-border);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.weekly-preview__button--primary {
+  background: rgba(91, 141, 239, 0.24);
+  border-color: rgba(91, 141, 239, 0.58);
+  color: var(--wp-text);
+}
+
+.weekly-preview__button--secondary {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--wp-text);
+}
+
+.weekly-preview__button:disabled {
+  opacity: 0.58;
+  cursor: wait;
+}
+
+@keyframes weeklyFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 680px) {
+  .weekly-preview__header {
+    align-items: stretch;
+  }
+
+  .weekly-preview__actions {
+    flex-direction: column;
+  }
+}
