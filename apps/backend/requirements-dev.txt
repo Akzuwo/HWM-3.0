@@ -1,2 +1,0 @@
-pytest
-argon2-cffi
