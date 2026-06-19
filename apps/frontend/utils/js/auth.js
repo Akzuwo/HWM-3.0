@@ -543,6 +543,7 @@ function updateAuthButton() {
 
     buttons.forEach((button) => {
         button.textContent = loginLabel;
+        button.setAttribute('aria-label', loginLabel);
         button.classList.toggle('is-hidden', authenticated);
         button.setAttribute('aria-hidden', authenticated ? 'true' : 'false');
         if (authenticated) {
@@ -576,6 +577,24 @@ function setupAuthButton() {
     });
 
     updateAuthButton();
+}
+
+function setupAuthButtonDelegation() {
+    if (document.documentElement.dataset.authButtonDelegationBound === 'true') {
+        return;
+    }
+
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest?.('[data-auth-button]');
+        if (!button || isAuthenticated()) {
+            return;
+        }
+
+        event.preventDefault();
+        openAuthOverlay(button);
+    });
+
+    document.documentElement.dataset.authButtonDelegationBound = 'true';
 }
 
 function setupAccountControls() {
@@ -2537,6 +2556,7 @@ async function checkLogin() {
 
     initAuthOverlay();
     bindAuthForms();
+    setupAuthButtonDelegation();
     setupAuthButton();
 
     try {
@@ -3713,6 +3733,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 window.addEventListener('hm:header-ready', () => {
     initSettingsDropdown();
+    setupAuthButtonDelegation();
     setupAuthButton();
     setupAccountControls();
     updateAuthUI();

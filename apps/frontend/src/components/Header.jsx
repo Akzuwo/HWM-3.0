@@ -51,6 +51,17 @@ function GearIcon({ className = '' }) {
   );
 }
 
+function ArrowBackIcon({ className = '' }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+      <path
+        d="M10.78 5.47a.75.75 0 0 1 0 1.06L6.31 11H20a.75.75 0 0 1 0 1.5H6.31l4.47 4.47a.75.75 0 1 1-1.06 1.06l-5.75-5.75a.75.75 0 0 1 0-1.06l5.75-5.75a.75.75 0 0 1 1.06 0Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 function GlobeIcon({ className = '' }) {
   return (
     <svg className={className} viewBox="0 0 24 24" focusable="false" aria-hidden="true">
@@ -77,7 +88,6 @@ function NavLinks({ currentPath, onNavigate }) {
       key={item.href}
       className="nav-link"
       to={item.href}
-      data-route={item.href.replace(/^\//, '')}
       {...(item.key ? { 'data-i18n': item.key } : {})}
       onClick={onNavigate}
       aria-current={currentPath === normalizePath(item.href) ? 'page' : undefined}
@@ -158,7 +168,7 @@ function MoreMenu({ items, currentPath, onNavigate }) {
 
 function SettingsDropdown({ mobile = false }) {
   return (
-    <div className="settings-dropdown" data-settings="">
+    <div className={`settings-dropdown${mobile ? ' settings-dropdown--mobile' : ''}`} data-settings="">
       <button
         className={`lang-switch settings-trigger${mobile ? ' settings-trigger--mobile' : ''}`}
         type="button"
@@ -172,8 +182,10 @@ function SettingsDropdown({ mobile = false }) {
         </span>
         {mobile ? (
           <>
-            <span className="settings-trigger__label" data-i18n="common.settings.ariaLabel">
-              Einstellungen
+            <span className="settings-trigger__label">
+              <span className="settings-trigger__title" data-i18n="common.settings.ariaLabel">
+                Einstellungen
+              </span>
             </span>
             <ChevronIcon className="settings-trigger__chevron" />
           </>
@@ -271,9 +283,19 @@ function UserArea() {
   );
 }
 
+function getStoredLocale() {
+  if (typeof window === 'undefined') {
+    return 'de';
+  }
+  return window.localStorage?.getItem('hm.locale') || document.documentElement.getAttribute('data-locale') || 'de';
+}
+
 export function Header() {
   const location = useLocation();
   const [isNavOpen, setIsNavOpen] = useState(false);
+  const [drawerView, setDrawerView] = useState('main');
+  const [isLanguageOpen, setIsLanguageOpen] = useState(false);
+  const [selectedLocale, setSelectedLocale] = useState(getStoredLocale);
   const [visibleCount, setVisibleCount] = useState(navItems.length);
   const navViewportRef = useRef(null);
   const navMeasureRef = useRef(null);
@@ -311,10 +333,37 @@ export function Header() {
 
   const closeNav = () => {
     setIsNavOpen(false);
+    setDrawerView('main');
+    setIsLanguageOpen(false);
   };
 
   const toggleNav = () => {
-    setIsNavOpen((open) => !open);
+    setIsNavOpen((open) => {
+      if (!open) {
+        setDrawerView('main');
+        setIsLanguageOpen(false);
+      }
+      return !open;
+    });
+  };
+
+  const openSettingsView = () => {
+    setDrawerView('settings');
+    setIsLanguageOpen(false);
+  };
+
+  const showMainView = () => {
+    setDrawerView('main');
+    setIsLanguageOpen(false);
+  };
+
+  const updateLocale = (nextLocale) => {
+    setSelectedLocale(nextLocale);
+    setIsLanguageOpen(false);
+    if (typeof window !== 'undefined') {
+      window.localStorage?.setItem('hm.locale', nextLocale);
+      window.hmI18n?.setLocale?.(nextLocale);
+    }
   };
 
   useLayoutEffect(() => {
@@ -385,121 +434,194 @@ export function Header() {
 
   return (
     <>
-      <header className="hm-navbar" data-nav="" data-i18n-attr="aria-label:common.nav.primary" role="navigation" aria-label="Main navigation">
+      <header className="hm-navbar" data-i18n-attr="aria-label:common.nav.primary" role="navigation" aria-label="Main navigation">
         <div className="hm-navbar__inner header">
-        <div className="header-left logo">
-          <Link className="logo-link" to="/" data-brand-link="">
-            <img data-logo="" alt="" aria-hidden="true" width="32" height="32" src="/media/logo.png" />
-            <span className="brand-mark" data-i18n="common.appName">
-              Homework Manager
-            </span>
-          </Link>
-        </div>
-
-        <div className="header-center">
-          <div className="nav-desktop-shell">
-            <nav ref={navViewportRef} className="nav-links nav-links--desktop" aria-label="Main navigation">
-              {visibleItems.map((item) => (
-                <Link
-                  key={item.href}
-                  className="nav-link"
-                  to={item.href}
-                  data-route={item.href.replace(/^\//, '')}
-                  {...(item.key ? { 'data-i18n': item.key } : {})}
-                  aria-current={currentPath === normalizePath(item.href) ? 'page' : undefined}
-                >
-                  {item.label}
-                </Link>
-              ))}
-              <MoreMenu items={overflowItems} currentPath={currentPath} />
-            </nav>
-            <div ref={navMeasureRef} className="nav-links nav-links--measure" aria-hidden="true">
-              {navItems.map((item) => (
-                <span key={item.href} className="nav-link" data-nav-measure="item">
-                  {item.label}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="header-right">
-          <div className="nav-right nav-right--desktop">
-            <div className="nav-right__actions">
-              <SettingsDropdown />
-              <UserArea />
-            </div>
-          </div>
-          <div className="nav-mobile">
-            <SettingsDropdown />
-            <button
-              className={`hm-navbar__toggle hamburger-btn${isNavOpen ? ' is-active' : ''}`}
-              type="button"
-              data-nav-toggle=""
-              aria-expanded={isNavOpen ? 'true' : 'false'}
-              aria-controls="hm-navbar-drawer"
-              data-i18n-attr="aria-label:common.nav.toggle"
-              onClick={toggleNav}
-            >
-              <span className="hm-navbar__toggle-box" aria-hidden="true">
-                <span className="hm-navbar__toggle-line"></span>
-                <span className="hm-navbar__toggle-line"></span>
-                <span className="hm-navbar__toggle-line"></span>
+          <div className="header-left logo">
+            <Link className="logo-link" to="/" data-brand-link="">
+              <img data-logo="" alt="" aria-hidden="true" width="32" height="32" src="/media/logo.png" />
+              <span className="brand-mark" data-i18n="common.appName">
+                Homework Manager
               </span>
-            </button>
+            </Link>
           </div>
-        </div>
+
+          <div className="header-center">
+            <div className="nav-desktop-shell">
+              <nav ref={navViewportRef} className="nav-links nav-links--desktop" aria-label="Main navigation">
+                {visibleItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    className="nav-link"
+                    to={item.href}
+                    {...(item.key ? { 'data-i18n': item.key } : {})}
+                    aria-current={currentPath === normalizePath(item.href) ? 'page' : undefined}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+                <MoreMenu items={overflowItems} currentPath={currentPath} />
+              </nav>
+              <div ref={navMeasureRef} className="nav-links nav-links--measure" aria-hidden="true">
+                {navItems.map((item) => (
+                  <span key={item.href} className="nav-link" data-nav-measure="item">
+                    {item.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="header-right">
+            <div className="nav-right nav-right--desktop">
+              <div className="nav-right__actions">
+                <SettingsDropdown />
+                <UserArea />
+              </div>
+            </div>
+            <div className="nav-mobile">
+              <SettingsDropdown />
+              <button
+                className={`hm-navbar__toggle hamburger-btn${isNavOpen ? ' is-active' : ''}`}
+                type="button"
+                aria-expanded={isNavOpen ? 'true' : 'false'}
+                aria-controls="hm-navbar-drawer"
+                data-i18n-attr="aria-label:common.nav.toggle"
+                onClick={toggleNav}
+              >
+                <span className="hm-navbar__toggle-box" aria-hidden="true">
+                  <span className="hm-navbar__toggle-line"></span>
+                  <span className="hm-navbar__toggle-line"></span>
+                  <span className="hm-navbar__toggle-line"></span>
+                </span>
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 
       <div
         className={`hm-navbar__overlay${isNavOpen ? ' is-open' : ''}`}
-        data-nav-overlay=""
         aria-hidden={isNavOpen ? 'false' : 'true'}
         onClick={closeNav}
       ></div>
 
       <aside
-        className={`mobile-sidebar${isNavOpen ? ' is-open' : ''}`}
-        data-nav-drawer=""
+        className={`mobile-sidebar${isNavOpen ? ' is-open' : ''}${drawerView === 'settings' ? ' is-settings-view' : ''}`}
         id="hm-navbar-drawer"
         aria-hidden={isNavOpen ? 'false' : 'true'}
         aria-modal="true"
       >
-        <div className="mobile-sidebar__inner">
-          <div className="mobile-sidebar__header">
-            <div className="mobile-sidebar__title-group">
-              <span className="mobile-sidebar__eyebrow">Navigation</span>
-              <Link className="mobile-sidebar__brand" to="/" onClick={closeNav}>
-                <img alt="" aria-hidden="true" width="28" height="28" src="/media/logo.png" />
-                <span className="mobile-sidebar__title" data-i18n="common.appName">
-                  Homework Manager
-                </span>
-              </Link>
+        <div className="mobile-sidebar__views">
+          <div
+            className={`mobile-sidebar__view mobile-sidebar__view--main${drawerView === 'main' ? ' is-active' : ''}`}
+            aria-hidden={drawerView === 'main' ? 'false' : 'true'}
+          >
+            <div className="mobile-sidebar__inner">
+              <div className="mobile-sidebar__header">
+                <Link className="mobile-sidebar__brand" to="/" onClick={closeNav}>
+                  <span className="mobile-sidebar__logo-frame" aria-hidden="true">
+                    <img alt="" width="40" height="40" src="/media/logo.png" />
+                  </span>
+                  <span className="mobile-sidebar__title" data-i18n="common.appName">
+                    Homework Manager
+                  </span>
+                </Link>
+                <button className="mobile-sidebar__close" type="button" aria-label="Close menu" onClick={closeNav}>
+                  <span aria-hidden="true">X</span>
+                </button>
+              </div>
+
+              <nav className="nav-links nav-links--mobile" aria-label="Main navigation">
+                <div className="nav-links--mobile__list">
+                  <NavLinks currentPath={currentPath} onNavigate={closeNav} />
+                  <button className="mobile-sidebar__settings-row" type="button" onClick={openSettingsView}>
+                    <span className="mobile-sidebar__settings-row-icon" aria-hidden="true">
+                      <GearIcon />
+                    </span>
+                    <span>Einstellungen</span>
+                    <ChevronIcon className="mobile-sidebar__settings-row-chevron" direction="right" />
+                  </button>
+                </div>
+              </nav>
+
+              <footer className="mobile-sidebar__footer">
+                <div className="nav-right nav-right--mobile">
+                  <UserArea />
+                </div>
+              </footer>
             </div>
-            <button className="mobile-sidebar__close" type="button" aria-label="Close menu" onClick={closeNav}>
-              <span aria-hidden="true">X</span>
-            </button>
           </div>
 
-          <section className="mobile-sidebar__section">
-            <span className="mobile-sidebar__section-title" data-i18n="common.nav.primary">
-              Navigation
-            </span>
-            <nav className="nav-links nav-links--mobile" aria-label="Main navigation">
-              <NavLinks currentPath={currentPath} onNavigate={closeNav} />
-            </nav>
-          </section>
+          <div
+            className={`mobile-sidebar__view mobile-sidebar__view--settings${drawerView === 'settings' ? ' is-active' : ''}`}
+            aria-hidden={drawerView === 'settings' ? 'false' : 'true'}
+          >
+            <div className="mobile-sidebar__inner mobile-sidebar__inner--settings">
+              <div className="mobile-sidebar__header mobile-sidebar__header--settings">
+                <button className="mobile-sidebar__circle-button" type="button" aria-label="Back" onClick={showMainView}>
+                  <ArrowBackIcon />
+                </button>
+                <h2 className="mobile-sidebar__settings-title">Einstellungen</h2>
+                <button className="mobile-sidebar__close" type="button" aria-label="Close menu" onClick={closeNav}>
+                  <span aria-hidden="true">X</span>
+                </button>
+              </div>
 
-          <section className="mobile-sidebar__section">
-            <span className="mobile-sidebar__section-title">Konto & Einstellungen</span>
-            <div className="nav-right nav-right--mobile">
-              <div className="nav-right__actions">
-                <SettingsDropdown mobile />
-                <UserArea />
+              <div className="mobile-sidebar__settings-content">
+                <section className="mobile-sidebar__settings-group">
+                  <span className="mobile-sidebar__settings-label">Präferenzen</span>
+                  <div className="mobile-sidebar__field">
+                    <span className="mobile-sidebar__field-label">Sprache</span>
+                    <div className={`mobile-sidebar__language-select${isLanguageOpen ? ' is-open' : ''}`}>
+                      <button
+                        className="mobile-sidebar__select"
+                        type="button"
+                        aria-haspopup="listbox"
+                        aria-expanded={isLanguageOpen ? 'true' : 'false'}
+                        onClick={() => setIsLanguageOpen((open) => !open)}
+                      >
+                        <span>
+                          {(locales.find((locale) => locale.code === selectedLocale) || locales[0]).label} ({selectedLocale.toUpperCase()})
+                        </span>
+                        <ChevronIcon className="mobile-sidebar__select-chevron" />
+                      </button>
+                      <div className="mobile-sidebar__language-menu" role="listbox" aria-label="Sprache">
+                        {locales.map((locale) => (
+                          <button
+                            key={locale.code}
+                            className="mobile-sidebar__language-option"
+                            type="button"
+                            role="option"
+                            aria-selected={selectedLocale === locale.code ? 'true' : 'false'}
+                            onClick={() => updateLocale(locale.code)}
+                          >
+                            {locale.label} ({locale.code.toUpperCase()})
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mobile-sidebar__toggle-row">
+                    <span>
+                      <strong>Darkmode</strong>
+                      <small>Dunkles Erscheinungsbild</small>
+                    </span>
+                    <button className="mobile-sidebar__theme-toggle" type="button" aria-pressed="false" aria-label="Darkmode">
+                      <span className="mobile-sidebar__theme-knob" aria-hidden="true"></span>
+                    </button>
+                  </div>
+                </section>
+
+                <section className="mobile-sidebar__settings-group">
+                  <span className="mobile-sidebar__settings-label">App Info</span>
+                  <div className="mobile-sidebar__info-row">
+                    <span>Version</span>
+                    <strong>3.0.0</strong>
+                  </div>
+                </section>
               </div>
             </div>
-          </section>
+          </div>
         </div>
       </aside>
     </>
